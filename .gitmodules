@@ -1,0 +1,3 @@
+[submodule "src/test/scala/stella-tests"]
+	path = src/test/scala/stella-tests
+	url = https://github.com/AbsoluteNikola/stella-tests
