@@ -7,3 +7,5 @@ lazy val root = (project in file("."))
     name := "stella-type-check",
     idePackagePrefix := Some("io.github.slava0135.stella")
   )
+
+libraryDependencies += "org.antlr" % "antlr4-runtime" % "4.13.1"
