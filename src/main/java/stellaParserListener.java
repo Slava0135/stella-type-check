@@ -1,5 +1,5 @@
+// Generated from stellaParser.g4 by ANTLR 4.13.1
 package io.github.slava0135.stella;
-
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 /**
