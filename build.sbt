@@ -9,3 +9,4 @@ lazy val root = (project in file("."))
   )
 
 libraryDependencies += "org.antlr" % "antlr4-runtime" % "4.13.1"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % "test"
