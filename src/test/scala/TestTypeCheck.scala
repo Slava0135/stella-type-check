@@ -17,14 +17,12 @@ class TestTypeCheck extends AnyFunSpec {
           if (TypeCheck.isSupported(text)) {
             it(testName) {
               TypeCheck.go(text) match {
-                case Ok() => {
+                case Ok() =>
                   fail("no errors found")
-                }
-                case Bad(msg) => {
+                case Bad(msg) =>
                   if (!msg.contains(errorTag)) {
                     fail("wrong error type")
                   }
-                }
               }
             }
           } else {
