@@ -2,12 +2,13 @@ package io.github.slava0135.stella
 
 import org.scalatest.funspec.AnyFunSpec
 
-import java.nio.file.{FileSystems, Files, Path}
+import java.nio.file.{FileSystems, Files, Paths}
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 
 class TestTypeCheck extends AnyFunSpec {
+  private val basePath =  FileSystems.getDefault.getPath("src", "test", "resources", "stella-tests").toString
   describe("bad") {
-    val testDir = FileSystems.getDefault.getPath("src", "test", "resources", "stella-tests", "bad")
+    val testDir = Paths.get(basePath, "bad")
     Files.list(testDir).iterator().asScala.foreach { errors =>
       val errorTag = errors.getFileName.toString
       describe(errorTag) {
@@ -33,8 +34,8 @@ class TestTypeCheck extends AnyFunSpec {
       }
     }
   }
-  describe("good") {
-    val testDir = FileSystems.getDefault.getPath("src", "test", "resources", "stella-tests", "ok")
+  describe("ok") {
+    val testDir = Paths.get(basePath, "ok")
     Files.list(testDir).iterator().asScala.foreach { test =>
       val testName = test.getFileName.toString
       val text = Files.readString(test)
