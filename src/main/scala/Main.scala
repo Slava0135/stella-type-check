@@ -1,45 +1,32 @@
 package io.github.slava0135.stella
 
-import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
+import java.nio.file.{Files, Paths}
 
 object Main {
   def main(args: Array[String]): Unit = {
-    val text =
-      """
-        |language core;
-        |
-        |// addition of natural numbers
-        |fn Nat::add(n : Nat) -> fn(Nat) -> Nat {
-        |  return fn(m : Nat) {
-        |    return Nat::rec(n, m, fn(i : Nat) {
-        |      return fn(r : Nat) {
-        |        return succ( r ); // r := r + 1
-        |      };
-        |    });
-        |  };
-        |}
-        |
-        |// square, computed as a sum of odd numbers
-        |fn square(n : Nat) -> Nat {
-        |  return Nat::rec(n, 0, fn(i : Nat) {
-        |      return fn(r : Nat) {
-        |        // r := r + (2*i + 1)
-        |        return Nat::add(i)( Nat::add(i)( succ( r )));
-        |      };
-        |  });
-        |}
-        |
-        |fn main(n : Nat) -> Nat {
-        |  return square(n);
-        |}
-        |""".stripMargin
-    val lexer = new stellaLexer(CharStreams.fromString(text))
-    val parser = new stellaParser(new CommonTokenStream(lexer))
-    val root = parser.program()
-    println(root.accept(new TestVisitor))
+    if (args.length < 1) {
+      Console.err.println("no arguments provided (expected 1)")
+      sys.exit(1)
+    }
+    if (args.length > 1) {
+      Console.err.println("too many arguments (expected 1)")
+      sys.exit(1)
+    }
+    val path = Paths.get(args.apply(0))
+    if (!path.getFileName.toString.endsWith(".st")) {
+      Console.err.println(s"\"${path.getFileName}\": wrong file format (expected .st)")
+      sys.exit(1)
+    }
+    val text = Files.readString(path)
+    if (!TypeCheck.isSupported(text)) {
+      Console.err.println("unsupported extension")
+      sys.exit(1)
+    }
+    TypeCheck.go(text) match {
+      case Ok() => sys.exit(1)
+      case Bad(message) =>
+        Console.err.println(message)
+        sys.exit(1)
+    }
   }
-}
-
-class TestVisitor extends stellaParserBaseVisitor[Nothing] {
-
 }
