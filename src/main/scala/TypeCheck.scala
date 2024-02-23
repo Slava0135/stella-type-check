@@ -1,7 +1,7 @@
 package io.github.slava0135.stella
 
-import TypeFactory.{evalFunType, evalType}
-import stellaParser.{DeclFunContext, ParamDeclContext, ProgramContext}
+import TypeFactory.evalType
+import stellaParser.{DeclFunContext, ProgramContext}
 
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
@@ -44,11 +44,20 @@ private class TypeVisitor extends stellaParserBaseVisitor[Either[String, TypeInf
       val func = it.asInstanceOf[DeclFunContext]
       topLevelDecl.put(func.name.getText, Fun(evalType(func.paramDecl.paramType), evalType(func.returnType)))
     })
-    topLevelDecl.foreach(it => println(s"${it._1} : ${it._2}"))
+    visitChildren(ctx)
     if (!ctx.decl().stream.anyMatch(it => it.isInstanceOf[DeclFunContext] && it.asInstanceOf[DeclFunContext].name.getText == "main")) {
       return Left("ERROR_MISSING_MAIN")
     }
     Right(null)
+  }
+
+  override def defaultResult(): Either[String, TypeInfo] = Right(null)
+  override def aggregateResult(aggregate: Either[String, TypeInfo], nextResult: Either[String, TypeInfo]): Either[String, TypeInfo] = {
+    (aggregate, nextResult) match {
+      case (Right(_), Right(_)) => Right(null)
+      case (a@Left(_), _) => a
+      case (_, n@Left(_)) => n
+    }
   }
 }
 
