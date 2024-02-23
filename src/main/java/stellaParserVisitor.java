@@ -209,6 +209,13 @@ public interface stellaParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitHead(stellaParser.HeadContext ctx);
 	/**
+	 * Visit a parse tree produced by the {@code TerminatingSemicolon}
+	 * labeled alternative in {@link stellaParser#expr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTerminatingSemicolon(stellaParser.TerminatingSemicolonContext ctx);
+	/**
 	 * Visit a parse tree produced by the {@code NotEqual}
 	 * labeled alternative in {@link stellaParser#expr}.
 	 * @param ctx the parse tree

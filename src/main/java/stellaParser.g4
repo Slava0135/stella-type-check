@@ -23,7 +23,7 @@ decl: (annotations += annotation)* 'fn' name = StellaIdent '(' (
     )? ')' ('->' returnType = stellatype)? (
         'throws' throwTypes+= stellatype (',' throwTypes+=stellatype)*
     )? '{' (localDecls += decl)* 'return' returnExpr = expr '}' # DeclFun
-    | (annotations += annotation)* 'generic' 'fn' name = StellaIdent '[' (generics += StellaIdent)* ']' '(' (
+    | (annotations += annotation)* 'generic' 'fn' name = StellaIdent '[' generics += StellaIdent (',' generics += StellaIdent)* ']' '(' (
         paramDecls += paramDecl (',' paramDecls += paramDecl)*
     )? ')' ('->' returnType = stellatype)? (
         'throws' throwTypes+= stellatype (',' throwTypes+=stellatype)*
@@ -66,7 +66,7 @@ expr:
     | 'unfold' '[' type_ = stellatype ']' expr_ = expr               # Unfold
     // expr
     | fun = expr '(' (args += expr (',' args += expr)*)? ')' # Application
-    | fun = expr '[' (types += stellatype) ']'                     # TypeApplication
+    | fun = expr '[' (types += stellatype (',' types += stellatype)*) ']'                     # TypeApplication
     // expr
     | left=expr '*' right=expr   # Multiply
     | left=expr '/' right=expr   # Divide
@@ -85,10 +85,10 @@ expr:
     | '{' (exprs += expr (',' exprs += expr)*)? '}' # Tuple
     | '{' bindings += binding (',' bindings += binding)* '}' # Record
     | '<|' label = StellaIdent ('=' rhs = expr)? '|>' # Variant
-    | 'match' expr '{' (
+    | 'match' expr_ = expr '{' (
         cases += matchCase ('|' cases += matchCase)*
     )? '}'                                         # Match
-    | '[' (exprs += expr (',' exprs += expr))? ']' # List
+    | '[' (exprs += expr (',' exprs += expr)*)? ']' # List
     // expr
     | left = expr '<' right = expr  # LessThan
     | left = expr '<=' right = expr # LessThanOrEqual
@@ -101,9 +101,10 @@ expr:
     | 'if' condition = expr 'then' thenExpr = expr 'else' elseExpr = expr # If
     | 'let' patternBindings+=patternBinding (',' patternBindings+=patternBinding)* 'in' body = expr           # Let
     | 'letrec' patternBindings+=patternBinding (',' patternBindings+=patternBinding)* 'in' body = expr           # LetRec
-    | 'generic' '[' (generics += StellaIdent)* ']' expr_ = expr                           # TypeAbstraction
+    | 'generic' '[' generics += StellaIdent (',' generics += StellaIdent)* ']' expr_ = expr                           # TypeAbstraction
     | '(' expr_ = expr ')'                                                        # ParenthesisedExpr
-    | expr1 = expr ';' (expr2 = expr)? # Sequence
+    | expr1 = expr ';' expr2 = expr # Sequence
+    | expr_ = expr ';' # TerminatingSemicolon
     ;
 
 patternBinding: pat=pattern '=' rhs=expr ;
@@ -137,12 +138,13 @@ labelledPattern: label = StellaIdent '=' pattern_ = pattern;
 stellatype:
     'Bool'  # TypeBool
     | 'Nat' # TypeNat
+    | '&' type_=stellatype                                     # TypeRef
+    | left = stellatype '+' right = stellatype                 # TypeSum
     | 'fn' '(' (
         paramTypes += stellatype (',' paramTypes += stellatype)*
     )? ')' '->' returnType = stellatype                        # TypeFun
     | 'forall' (types += StellaIdent)* '.' type_ = stellatype          # TypeForAll
     | 'µ' var = StellaIdent '.' type_ = stellatype             # TypeRec
-    | left = stellatype '+' right = stellatype                 # TypeSum
     | '{' (types += stellatype (',' types += stellatype)*)? '}' # TypeTuple
     | '{'
         fieldTypes += recordFieldType (
@@ -154,10 +156,9 @@ stellatype:
             ',' fieldTypes += variantFieldType
         )*
     )? '|>'                                                     # TypeVariant
-    | '[' (types += stellatype (',' types += stellatype)*)? ']' # TypeList
+    | '[' type_ = stellatype ']' # TypeList
     | 'Unit'                                                    # TypeUnit
     | 'Top'                                                     # TypeTop
-    | '&' type_=stellatype                                      # TypeRef
     | 'Bot'                                                     # TypeBottom
     | name = StellaIdent                                        # TypeVar
     | '(' type_ = stellatype ')' # TypeParens;

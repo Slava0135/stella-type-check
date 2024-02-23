@@ -221,6 +221,13 @@ public class stellaParserBaseVisitor<T> extends AbstractParseTreeVisitor<T> impl
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
+	@Override public T visitTerminatingSemicolon(stellaParser.TerminatingSemicolonContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
 	@Override public T visitNotEqual(stellaParser.NotEqualContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}

@@ -346,6 +346,18 @@ public interface stellaParserListener extends ParseTreeListener {
 	 */
 	void exitHead(stellaParser.HeadContext ctx);
 	/**
+	 * Enter a parse tree produced by the {@code TerminatingSemicolon}
+	 * labeled alternative in {@link stellaParser#expr}.
+	 * @param ctx the parse tree
+	 */
+	void enterTerminatingSemicolon(stellaParser.TerminatingSemicolonContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code TerminatingSemicolon}
+	 * labeled alternative in {@link stellaParser#expr}.
+	 * @param ctx the parse tree
+	 */
+	void exitTerminatingSemicolon(stellaParser.TerminatingSemicolonContext ctx);
+	/**
 	 * Enter a parse tree produced by the {@code NotEqual}
 	 * labeled alternative in {@link stellaParser#expr}.
 	 * @param ctx the parse tree

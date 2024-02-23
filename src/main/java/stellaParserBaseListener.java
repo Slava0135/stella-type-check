@@ -365,6 +365,18 @@ public class stellaParserBaseListener implements stellaParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterTerminatingSemicolon(stellaParser.TerminatingSemicolonContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitTerminatingSemicolon(stellaParser.TerminatingSemicolonContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterNotEqual(stellaParser.NotEqualContext ctx) { }
 	/**
 	 * {@inheritDoc}
