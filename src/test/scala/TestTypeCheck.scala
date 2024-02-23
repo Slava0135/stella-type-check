@@ -26,7 +26,7 @@ class TestTypeCheck extends AnyFunSpec {
               }
             }
           } else {
-            ignore(testName) {
+            ignore(s"$testName : unsupported extension") {
             }
           }
         }
