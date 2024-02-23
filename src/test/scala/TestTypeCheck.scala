@@ -13,8 +13,23 @@ class TestTypeCheck extends AnyFunSpec {
       describe(errorTag) {
         Files.list(errors).iterator().asScala.foreach { test =>
           val testName = test.getFileName.toString
-          it(testName) {
-
+          val text = Files.readString(test)
+          if (TypeCheck.isSupported(text)) {
+            it(testName) {
+              TypeCheck.go(text) match {
+                case Ok() => {
+                  fail("no errors found")
+                }
+                case Bad(msg) => {
+                  if (!msg.contains(errorTag)) {
+                    fail("wrong error type")
+                  }
+                }
+              }
+            }
+          } else {
+            ignore(testName) {
+            }
           }
         }
       }
