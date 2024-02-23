@@ -33,4 +33,23 @@ class TestTypeCheck extends AnyFunSpec {
       }
     }
   }
+  describe("good") {
+    val testDir = FileSystems.getDefault.getPath("src", "test", "resources", "stella-tests", "ok")
+    Files.list(testDir).iterator().asScala.foreach { test =>
+      val testName = test.getFileName.toString
+      val text = Files.readString(test)
+      if (TypeCheck.isSupported(text)) {
+        it(testName) {
+          TypeCheck.go(text) match {
+            case Ok() =>
+            case Bad(msg) =>
+              fail(s"invalid error:\n ${msg}")
+          }
+        }
+      } else {
+        ignore(s"$testName : unsupported extension") {
+        }
+      }
+    }
+  }
 }
