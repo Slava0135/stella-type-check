@@ -44,7 +44,7 @@ class TestTypeCheck extends AnyFunSpec {
           TypeCheck.go(text) match {
             case Ok() =>
             case Bad(msg) =>
-              fail(s"invalid error:\n ${msg}")
+              fail(s"invalid error:\n$msg")
           }
         }
       } else {
