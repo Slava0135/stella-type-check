@@ -14,7 +14,7 @@ object Main {
     }
     val path = Paths.get(args.apply(0))
     if (!path.getFileName.toString.endsWith(".st")) {
-      Console.err.println(s"\"${path.getFileName}\": wrong file format (expected .st)")
+      Console.err.println(s"\"${path.getFileName}\": wrong file extension (expected \"*.st\")")
       sys.exit(1)
     }
     val text = Files.readString(path)
