@@ -114,6 +114,31 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     }
   }
 
+  override def visitApplication(ctx: ApplicationContext): Either[String, Type] = {
+    (ctx.fun.accept(this), ctx.args.get(0).accept(this)) match {
+      case (Right(Fun(param, res)), Right(arg)) =>
+        if (param == arg) {
+          Right(res)
+        } else {
+          unexpectedTypeForExpression(ctx.fun, param, arg)
+        }
+      case (Right(Fun(_, _)), err@Left(_)) =>
+        err
+      case (Right(t), _) =>
+        val msg =
+          s"""expected a function type but got
+            |  $t
+            |for the expression
+            |  ${prettyPrint(ctx.fun)}
+            |in the function call at ${pos(ctx)}
+            |  ${prettyPrint(ctx)}
+            |""".stripMargin
+        error("ERROR_NOT_A_FUNCTION", msg)
+      case (err@Left(_), _) => err
+      case (_, err@Left(_)) => err
+    }
+  }
+
   override def visitConstInt(ctx: ConstIntContext): Either[String, Type] = Right(Nat())
   override def visitTypeNat(ctx: TypeNatContext): Either[String, Type] = Right(Nat())
 
