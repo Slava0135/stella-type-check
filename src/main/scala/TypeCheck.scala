@@ -11,7 +11,7 @@ import scala.collection.{immutable, mutable}
 object TypeCheck {
   def go(text: String): Result = {
     val tree = getTree(text)
-    tree.accept(new TypeVisitor(immutable.Map.empty, Unknown())) match {
+    tree.accept(new TypeVisitor(immutable.Map.empty, None)) match {
       case Left(msg) => Bad(msg)
       case Right(_) => Ok()
     }
@@ -36,7 +36,7 @@ object TypeCheck {
   }
 }
 
-private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: Type) extends stellaParserBaseVisitor[Either[String, Type]] {
+private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: Option[Type]) extends stellaParserBaseVisitor[Either[String, Type]] {
 
   override def visitProgram(ctx: ProgramContext): Either[String, Type] = {
     val topLevelDecl = mutable.Map[String, Type]()
@@ -46,7 +46,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
         case (Right(p), Right(r)) => topLevelDecl.put(func.name.getText, Fun(p, r))
       }
     })
-    val ts = ctx.decl().stream().map(it => it.accept(new TypeVisitor(vars ++ topLevelDecl, Unknown())))
+    val ts = ctx.decl().stream().map(it => it.accept(new TypeVisitor(vars ++ topLevelDecl, None)))
     val err = ts.filter(it => it.isLeft).findFirst()
     if (err.isPresent) {
       return err.get()
@@ -62,7 +62,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
     val funT = (param.accept(this), ctx.returnType.accept(this)) match {
       case (Right(p), Right(r)) => Fun(p, r)
     }
-    ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((param.name.getText, funT.param)), funT.res)) match {
+    ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((param.name.getText, funT.param)), Some(funT.res))) match {
       case err@Left(_) => err
       case Right(returnT) =>
         if (returnT != funT.res) {
@@ -74,7 +74,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def visitIf(ctx: IfContext): Either[String, Type] = {
-    val condT = ctx.condition.accept(this) match {
+    val condT = ctx.condition.accept(new TypeVisitor(vars, Some(Bool()))) match {
       case Right(t) => t
       case err@Left(_) => return err
     }
@@ -90,7 +90,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def visitSucc(ctx: SuccContext): Either[String, Type] = {
-    ctx.expr().accept(this) match {
+    ctx.expr().accept(new TypeVisitor(vars, Some(Nat()))) match {
       case Right(t) if t == Nat() => Right(t)
       case Right(t) => unexpectedTypeForExpression(ctx.expr(), Nat(), t)
       case err@Left(_) => err
@@ -98,7 +98,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def visitIsZero(ctx: IsZeroContext): Either[String, Type] = {
-    ctx.expr().accept(this) match {
+    ctx.expr().accept(new TypeVisitor(vars, Some(Nat()))) match {
       case Right(t) if t == Nat() => Right(t)
       case Right(t) => unexpectedTypeForExpression(ctx.expr(), Nat(), t)
       case err@Left(_) => err
@@ -115,7 +115,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def visitNatRec(ctx: NatRecContext): Either[String, Type] = {
-    ctx.n.accept(this) match {
+    ctx.n.accept(new TypeVisitor(vars, Some(Nat()))) match {
       case Right(Nat()) =>
       case err@Left(_) => return err
       case Right(t) => return unexpectedTypeForExpression(ctx.n, Nat(), t)
@@ -125,7 +125,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
       case err@Left(_) => return err
     }
     val expectedStepT = Fun(Nat(), Fun(initialT, initialT))
-    ctx.step.accept(this) match {
+    ctx.step.accept(new TypeVisitor(vars, Some(expectedStepT))) match {
       case Right(t) if t == expectedStepT =>
       case Right(t) => return unexpectedTypeForExpression(ctx.step, expectedStepT, t)
       case err@Left(_) => return err
@@ -134,7 +134,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def visitApplication(ctx: ApplicationContext): Either[String, Type] = {
-    (ctx.fun.accept(this), ctx.args.get(0).accept(this)) match {
+    (ctx.fun.accept(new TypeVisitor(vars, None)), ctx.args.get(0).accept(this)) match { // TODO
       case (Right(Fun(param, res)), Right(arg)) =>
         if (param == arg) {
           Right(res)
@@ -160,11 +160,11 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
 
   override def visitAbstraction(ctx: AbstractionContext): Either[String, Type] = {
     expectedT match {
-      case Fun(_, _) =>
-      case _ =>
+      case None | Some(Fun(_, _)) =>
+      case Some(t) =>
         val msg =
           s"""expected an expression of a non-function type
-            |  $expectedT
+            |  $t
             |but got an anonymous function at ${pos(ctx)}
             |  ${prettyPrint(ctx)}
             |""".stripMargin
