@@ -115,5 +115,5 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     ctx.type_.accept(this)
   }
 
-  override def defaultResult(): Either[String, Type] = Right(null)
+  override def defaultResult(): Either[String, Type] = Right(Unknown())
 }

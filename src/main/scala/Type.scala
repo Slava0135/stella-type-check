@@ -2,6 +2,9 @@ package io.github.slava0135.stella
 
 sealed trait Type
 
+final case class Unknown() extends Type {
+  override def toString: String = "???"
+}
 final case class Nat() extends Type {
   override def toString: String = "Nat"
 }
