@@ -97,6 +97,14 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     }
   }
 
+  override def visitIsZero(ctx: IsZeroContext): Either[String, Type] = {
+    ctx.expr().accept(this) match {
+      case Right(t) if t == Nat() => Right(t)
+      case Right(t) => unexpectedTypeForExpression(ctx.expr(), Nat(), t)
+      case err@Left(_) => err
+    }
+  }
+
   override def visitConstInt(ctx: ConstIntContext): Either[String, Type] = {
     Right(Nat())
   }
