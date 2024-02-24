@@ -212,6 +212,10 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
     ctx.type_.accept(this)
   }
 
+  override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[String, Type] = {
+    ctx.expr_.accept(this)
+  }
+
   override def defaultResult(): Either[String, Type] = Right(Unknown())
 
   private def unexpectedTypeForExpression(ctx: ExprContext, expected: Type, actual: Type): Either[String, Type] = {
