@@ -22,8 +22,9 @@ class TestTypeCheck extends AnyFunSpec {
                 case Ok() =>
                   fail("no errors found")
                 case Bad(msg) =>
+                  println(msg)
                   if (!msg.contains(errorTag)) {
-                    fail(s"wrong error type:\n${msg}")
+                    fail("wrong error type")
                   }
               }
             }
