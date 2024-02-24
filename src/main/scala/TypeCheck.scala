@@ -2,8 +2,9 @@ package io.github.slava0135.stella
 
 import stellaParser._
 
+import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.ParseTreeWalker
-import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
+import org.antlr.v4.runtime.{CharStreams, CommonTokenStream, ParserRuleContext}
 
 import scala.collection.{immutable, mutable}
 
@@ -73,7 +74,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
               |but got
               |  $returnT
               |for expression
-              |  ${ctx.returnExpr.getText}
+              |  ${prettyPrint(ctx.returnExpr)}
               |""".stripMargin
           Left(msg)
         } else {
@@ -116,4 +117,10 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
   }
 
   override def defaultResult(): Either[String, Type] = Right(Unknown())
+
+  private def prettyPrint(ctx: ParserRuleContext): String = {
+    if (ctx.start == null || ctx.stop == null || ctx.start.getStartIndex < 0 || ctx.stop.getStopIndex < 0)
+      return ctx.getText
+    ctx.start.getInputStream.getText(Interval.of(ctx.start.getStartIndex, ctx.stop.getStopIndex))
+  }
 }
