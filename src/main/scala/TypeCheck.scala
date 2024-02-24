@@ -105,6 +105,20 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     }
   }
 
+  override def visitVar(ctx: VarContext): Either[String, Type] = {
+    val name = ctx.name.getText
+    vars.get(name) match {
+      case None =>
+        val msg =
+           s"""An error occurred during typechecking!
+            |Type Error Tag: [ERROR_UNDEFINED_VARIABLE]
+            |undefined variable $name at ${pos(ctx)}
+            |""".stripMargin
+        Left(msg)
+      case Some(t) => Right(t)
+    }
+  }
+
   override def visitConstInt(ctx: ConstIntContext): Either[String, Type] = {
     Right(Nat())
   }
