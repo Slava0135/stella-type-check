@@ -66,20 +66,26 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
       case err@Left(_) => err
       case Right(returnT) =>
         if (returnT != funT.res) {
-          val msg =
-            s"""An error occurred during typechecking!
-              |Type Error Tag: [ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION]
-              |expected type
-              |  ${funT.res}
-              |but got
-              |  $returnT
-              |for expression at ${pos(ctx)}
-              |  ${prettyPrint(ctx.returnExpr)}
-              |""".stripMargin
-          Left(msg)
+          unexpectedTypeForExpression(ctx.returnExpr, funT.res, returnT)
         } else {
           Right(funT)
         }
+    }
+  }
+
+  override def visitIf(ctx: IfContext): Either[String, Type] = {
+    val condT = ctx.condition.accept(this) match {
+      case Right(t) => t
+      case err@Left(_) => return err
+    }
+    if (condT != Bool()) {
+      return unexpectedTypeForExpression(ctx.condition, Bool(), condT)
+    }
+    (ctx.thenExpr.accept(this), ctx.elseExpr.accept(this)) match {
+      case (Right(thenT), Right(elseT)) if thenT == elseT => Right(thenT)
+      case (Right(thenT), Right(elseT)) => unexpectedTypeForExpression(ctx.elseExpr, thenT, elseT)
+      case (err@Left(_), _) => err
+      case (_, err@Left(_)) => err
     }
   }
 
@@ -116,6 +122,20 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
   }
 
   override def defaultResult(): Either[String, Type] = Right(Unknown())
+
+  private def unexpectedTypeForExpression(ctx: ExprContext, expected: Type, actual: Type): Either[String, Type] = {
+    val msg =
+      s"""An error occurred during typechecking!
+         |Type Error Tag: [ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION]
+         |expected type
+         |  $expected
+         |but got
+         |  $actual
+         |for expression at ${pos(ctx)}
+         |  ${prettyPrint(ctx)}
+         |""".stripMargin
+    Left(msg)
+  }
 
   private def prettyPrint(ctx: ParserRuleContext): String = {
     if (ctx.start == null || ctx.stop == null || ctx.start.getStartIndex < 0 || ctx.stop.getStopIndex < 0)
