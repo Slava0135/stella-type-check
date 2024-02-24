@@ -1,16 +1,16 @@
 package io.github.slava0135.stella
 
-import stellaParser.{DeclFunContext, ProgramContext}
+import stellaParser._
 
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 
 object TypeCheck {
   def go(text: String): Result = {
     val tree = getTree(text)
-    tree.accept(new TypeVisitor) match {
+    tree.accept(new TypeVisitor(immutable.Map.empty)) match {
       case Left(msg) => Bad(msg)
       case Right(_) => Ok()
     }
@@ -20,7 +20,7 @@ object TypeCheck {
     val tree = getTree(text)
     val listener = new stellaParserBaseListener {
       var supported = true
-      override def enterAnExtension(ctx: stellaParser.AnExtensionContext): Unit = {
+      override def enterAnExtension(ctx: AnExtensionContext): Unit = {
         supported = false
       }
     }
@@ -35,31 +35,75 @@ object TypeCheck {
   }
 }
 
-private class TypeVisitor extends stellaParserBaseVisitor[Either[String, Type]] {
-  private val topLevelDecl = mutable.Map[String, Type]()
+private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaParserBaseVisitor[Either[String, Type]] {
 
   override def visitProgram(ctx: ProgramContext): Either[String, Type] = {
+    val topLevelDecl = mutable.Map[String, Type]()
     ctx.decl().stream().forEach(it => {
       val func = it.asInstanceOf[DeclFunContext]
       (func.paramDecl(0).accept(this), func.returnType.accept(this)) match {
         case (Right(p), Right(r)) => topLevelDecl.put(func.name.getText, Fun(p, r))
       }
     })
+    val ts = ctx.decl().stream().map(it => it.accept(new TypeVisitor(vars ++ topLevelDecl)))
+    val err = ts.filter(it => it.isLeft).findFirst()
+    if (err.isPresent) {
+      return err.get()
+    }
     if (!topLevelDecl.contains("main")) {
       return Left("ERROR_MISSING_MAIN")
     }
     Right(null)
   }
 
-  override def visitTypeNat(ctx: stellaParser.TypeNatContext): Either[String, Type] = {
+  override def visitDeclFun(ctx: DeclFunContext): Either[String, Type] = {
+    val param = ctx.paramDecl(0)
+    val funT = (param.accept(this), ctx.returnType.accept(this)) match {
+      case (Right(p), Right(r)) => Fun(p, r)
+    }
+    ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((param.name.getText, funT.param)))) match {
+      case err@Left(_) => err
+      case Right(returnT) => {
+        if (returnT != funT.res) {
+          val msg =
+            s"""An error occurred during typechecking!
+              |Type Error Tag: [ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION]
+              |expected type
+              |  ${funT.res}
+              |but got
+              |  $returnT
+              |for expression
+              |  ${ctx.returnExpr.getText}
+              |""".stripMargin
+          Left(msg)
+        } else {
+          Right(funT)
+        }
+      }
+    }
+  }
+
+  override def visitConstInt(ctx: ConstIntContext): Either[String, Type] = {
     Right(Nat())
   }
 
-  override def visitTypeBool(ctx: stellaParser.TypeBoolContext): Either[String, Type] = {
+  override def visitTypeNat(ctx: TypeNatContext): Either[String, Type] = {
+    Right(Nat())
+  }
+
+  override def visitTypeBool(ctx: TypeBoolContext): Either[String, Type] = {
     Right(Bool())
   }
 
-  override def visitTypeFun(ctx: stellaParser.TypeFunContext): Either[String, Type] = {
+  override def visitConstFalse(ctx: ConstFalseContext): Either[String, Type] = {
+    Right(Bool())
+  }
+
+  override def visitConstTrue(ctx: ConstTrueContext): Either[String, Type] = {
+    Right(Bool())
+  }
+
+  override def visitTypeFun(ctx: TypeFunContext): Either[String, Type] = {
     (ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this)) match {
       case (Right(p), Right(r)) => Right(Fun(p, r))
       case (err@Left(_), _) => err
@@ -67,7 +111,7 @@ private class TypeVisitor extends stellaParserBaseVisitor[Either[String, Type]] 
     }
   }
 
-  override def visitTypeParens(ctx: stellaParser.TypeParensContext): Either[String, Type] = {
+  override def visitTypeParens(ctx: TypeParensContext): Either[String, Type] = {
     ctx.type_.accept(this)
   }
 
