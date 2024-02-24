@@ -45,8 +45,7 @@ private class TypeVisitor extends stellaParserBaseVisitor[Either[String, Type]] 
         case (Right(p), Right(r)) => topLevelDecl.put(func.name.getText, Fun(p, r))
       }
     })
-    topLevelDecl.foreach(println)
-    if (!ctx.decl().stream.anyMatch(it => it.isInstanceOf[DeclFunContext] && it.asInstanceOf[DeclFunContext].name.getText == "main")) {
+    if (!topLevelDecl.contains("main")) {
       return Left("ERROR_MISSING_MAIN")
     }
     Right(null)
