@@ -1,6 +1,5 @@
 package io.github.slava0135.stella
 
-import TypeFactory.evalType
 import stellaParser.{DeclFunContext, ProgramContext}
 
 import org.antlr.v4.runtime.tree.ParseTreeWalker
@@ -36,30 +35,42 @@ object TypeCheck {
   }
 }
 
-private class TypeVisitor extends stellaParserBaseVisitor[Either[String, TypeInfo]] {
+private class TypeVisitor extends stellaParserBaseVisitor[Either[String, Type]] {
   private val topLevelDecl = mutable.Map[String, Type]()
 
-  override def visitProgram(ctx: ProgramContext): Either[String, TypeInfo] = {
+  override def visitProgram(ctx: ProgramContext): Either[String, Type] = {
     ctx.decl().stream().forEach(it => {
       val func = it.asInstanceOf[DeclFunContext]
-      topLevelDecl.put(func.name.getText, Fun(evalType(func.paramDecl.paramType), evalType(func.returnType)))
+      (func.paramDecl(0).accept(this), func.returnType.accept(this)) match {
+        case (Right(p), Right(r)) => topLevelDecl.put(func.name.getText, Fun(p, r))
+      }
     })
-    visitChildren(ctx)
+    topLevelDecl.foreach(println)
     if (!ctx.decl().stream.anyMatch(it => it.isInstanceOf[DeclFunContext] && it.asInstanceOf[DeclFunContext].name.getText == "main")) {
       return Left("ERROR_MISSING_MAIN")
     }
     Right(null)
   }
 
-  override def defaultResult(): Either[String, TypeInfo] = Right(null)
-  override def aggregateResult(aggregate: Either[String, TypeInfo], nextResult: Either[String, TypeInfo]): Either[String, TypeInfo] = {
-    (aggregate, nextResult) match {
-      case (Right(_), Right(_)) => Right(null)
-      case (a@Left(_), _) => a
-      case (_, n@Left(_)) => n
+  override def visitTypeNat(ctx: stellaParser.TypeNatContext): Either[String, Type] = {
+    Right(Nat())
+  }
+
+  override def visitTypeBool(ctx: stellaParser.TypeBoolContext): Either[String, Type] = {
+    Right(Bool())
+  }
+
+  override def visitTypeFun(ctx: stellaParser.TypeFunContext): Either[String, Type] = {
+    (ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this)) match {
+      case (Right(p), Right(r)) => Right(Fun(p, r))
+      case (err@Left(_), _) => err
+      case (_, err@Left(_)) => err
     }
   }
-}
 
-private class TypeInfo {
+  override def visitTypeParens(ctx: stellaParser.TypeParensContext): Either[String, Type] = {
+    ctx.type_.accept(this)
+  }
+
+  override def defaultResult(): Either[String, Type] = Right(null)
 }
