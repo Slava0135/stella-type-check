@@ -193,10 +193,23 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
 
   override def visitDotTuple(ctx: DotTupleContext): Either[String, Type] = {
     ctx.expr_.accept(new TypeVisitor(vars, None)) match {
-      case Right(Tuple(a)) =>
-        Right(a.apply(ctx.index.getText.toInt - 1))
+      case Right(t@Tuple(a)) =>
+        val index = ctx.index.getText.toInt
+        if (index < 1 || index > a.length) {
+          val why =
+            s"""unexpected access to component number $index
+              |in a tuple
+              |${prettyPrint(ctx.expr_)}
+              |of length ${a.length}
+              |of type $t
+              |at ${pos(ctx)}
+              |""".stripMargin
+          error("ERROR_TUPLE_INDEX_OUT_OF_BOUNDS", why)
+        } else {
+          Right(a.apply(index - 1))
+        }
       case Right(t) =>
-        val msg =
+        val why =
           s"""expected an expression of tuple type
             |but got expression
             |${prettyPrint(ctx.expr_)}
@@ -205,7 +218,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
             |in expression
             |${prettyPrint(ctx)}
             |""".stripMargin
-          error("ERROR_NOT_A_TUPLE", msg)
+          error("ERROR_NOT_A_TUPLE", why)
       case err@Left(_) => err
     }
   }
