@@ -148,9 +148,9 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
           s"""expected a function type but got
             |  $t
             |for the expression
-            |  ${prettyPrint(ctx.fun)}
+            |${prettyPrint(ctx.fun)}
             |in the function call at ${pos(ctx)}
-            |  ${prettyPrint(ctx)}
+            |${prettyPrint(ctx)}
             |""".stripMargin
         error("ERROR_NOT_A_FUNCTION", msg)
       case (err@Left(_), _) => err
@@ -179,7 +179,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
           s"""expected an expression of a non-function type
             |  $t
             |but got an anonymous function at ${pos(ctx)}
-            |  ${prettyPrint(ctx)}
+            |${prettyPrint(ctx)}
             |""".stripMargin
         return error("ERROR_UNEXPECTED_LAMBDA", msg)
     }
@@ -217,7 +217,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
          |but got
          |  $actual
          |for expression at ${pos(ctx)}
-         |  ${prettyPrint(ctx)}
+         |${prettyPrint(ctx)}
          |""".stripMargin
     error("ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION", why)
   }
@@ -234,7 +234,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   private def prettyPrint(ctx: ParserRuleContext): String = {
     if (ctx.start == null || ctx.stop == null || ctx.start.getStartIndex < 0 || ctx.stop.getStopIndex < 0)
       return ctx.getText
-    ctx.start.getInputStream.getText(Interval.of(ctx.start.getStartIndex, ctx.stop.getStopIndex))
+    ctx.start.getInputStream.getText(Interval.of(ctx.start.getStartIndex, ctx.stop.getStopIndex)).indent(2)
   }
 
   private def pos(ctx: ParserRuleContext): String = {
