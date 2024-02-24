@@ -109,12 +109,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     val name = ctx.name.getText
     vars.get(name) match {
       case None =>
-        val msg =
-           s"""An error occurred during typechecking!
-            |Type Error Tag: [ERROR_UNDEFINED_VARIABLE]
-            |undefined variable $name at ${pos(ctx)}
-            |""".stripMargin
-        Left(msg)
+        Left(error("ERROR_UNDEFINED_VARIABLE", s"undefined variable $name at ${pos(ctx)}"))
       case Some(t) => Right(t)
     }
   }
@@ -141,17 +136,22 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
   override def defaultResult(): Either[String, Type] = Right(Unknown())
 
   private def unexpectedTypeForExpression(ctx: ExprContext, expected: Type, actual: Type): Either[String, Type] = {
-    val msg =
-      s"""An error occurred during typechecking!
-         |Type Error Tag: [ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION]
-         |expected type
+    val why =
+      s"""expected type
          |  $expected
          |but got
          |  $actual
          |for expression at ${pos(ctx)}
          |  ${prettyPrint(ctx)}
          |""".stripMargin
-    Left(msg)
+    Left(error("ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION", why))
+  }
+
+  private def error(tag: String, why: String) = {
+    s"""An error occurred during typechecking!
+       |Type Error Tag: [$tag]
+       |$why
+       |""".stripMargin
   }
 
   private def prettyPrint(ctx: ParserRuleContext): String = {
