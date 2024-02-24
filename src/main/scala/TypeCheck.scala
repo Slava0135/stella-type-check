@@ -64,7 +64,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     }
     ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((param.name.getText, funT.param)))) match {
       case err@Left(_) => err
-      case Right(returnT) => {
+      case Right(returnT) =>
         if (returnT != funT.res) {
           val msg =
             s"""An error occurred during typechecking!
@@ -73,14 +73,13 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
               |  ${funT.res}
               |but got
               |  $returnT
-              |for expression
+              |for expression at ${pos(ctx)}
               |  ${prettyPrint(ctx.returnExpr)}
               |""".stripMargin
           Left(msg)
         } else {
           Right(funT)
         }
-      }
     }
   }
 
@@ -122,5 +121,9 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     if (ctx.start == null || ctx.stop == null || ctx.start.getStartIndex < 0 || ctx.stop.getStopIndex < 0)
       return ctx.getText
     ctx.start.getInputStream.getText(Interval.of(ctx.start.getStartIndex, ctx.stop.getStopIndex))
+  }
+
+  private def pos(ctx: ParserRuleContext): String = {
+    s"line ${ctx.start.getLine}"
   }
 }
