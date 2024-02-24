@@ -114,6 +114,25 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     }
   }
 
+  override def visitNatRec(ctx: NatRecContext): Either[String, Type] = {
+    ctx.n.accept(this) match {
+      case Right(Nat()) =>
+      case err@Left(_) => return err
+      case Right(t) => return unexpectedTypeForExpression(ctx.n, Nat(), t)
+    }
+    val initialT = ctx.initial.accept(this) match {
+      case Right(t) => t
+      case err@Left(_) => return err
+    }
+    val expectedStepT = Fun(Nat(), Fun(initialT, initialT))
+    ctx.step.accept(this) match {
+      case Right(t) if t == expectedStepT =>
+      case Right(t) => return unexpectedTypeForExpression(ctx.step, expectedStepT, t)
+      case err@Left(_) => return err
+    }
+    Right(initialT)
+  }
+
   override def visitApplication(ctx: ApplicationContext): Either[String, Type] = {
     (ctx.fun.accept(this), ctx.args.get(0).accept(this)) match {
       case (Right(Fun(param, res)), Right(arg)) =>
