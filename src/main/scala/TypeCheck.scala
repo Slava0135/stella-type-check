@@ -52,7 +52,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
       return err.get()
     }
     if (!topLevelDecl.contains("main")) {
-      return Left("ERROR_MISSING_MAIN")
+      return error("ERROR_MISSING_MAIN", "main function is not found in the program")
     }
     Right(null)
   }
@@ -109,7 +109,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     val name = ctx.name.getText
     vars.get(name) match {
       case None =>
-        Left(error("ERROR_UNDEFINED_VARIABLE", s"undefined variable $name at ${pos(ctx)}"))
+        error("ERROR_UNDEFINED_VARIABLE", s"undefined variable $name at ${pos(ctx)}")
       case Some(t) => Right(t)
     }
   }
@@ -144,14 +144,16 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
          |for expression at ${pos(ctx)}
          |  ${prettyPrint(ctx)}
          |""".stripMargin
-    Left(error("ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION", why))
+    error("ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION", why)
   }
 
-  private def error(tag: String, why: String) = {
-    s"""An error occurred during typechecking!
+  private def error(tag: String, why: String): Left[String, Type] = {
+    Left(
+      s"""An error occurred during typechecking!
        |Type Error Tag: [$tag]
        |$why
        |""".stripMargin
+    )
   }
 
   private def prettyPrint(ctx: ParserRuleContext): String = {
