@@ -100,7 +100,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
 
   override def visitIsZero(ctx: IsZeroContext): Either[String, Type] = {
     ctx.expr().accept(new TypeVisitor(vars, Some(Nat()))) match {
-      case Right(t) if t == Nat() => Right(t)
+      case Right(t) if t == Nat() => Right(Bool())
       case Right(t) => unexpectedTypeForExpression(ctx.expr(), Nat(), t)
       case err@Left(_) => err
     }
