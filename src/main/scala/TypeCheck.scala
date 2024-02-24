@@ -139,6 +139,14 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     }
   }
 
+  override def visitAbstraction(ctx: AbstractionContext): Either[String, Type] = {
+    val paramT = ctx.paramDecl.accept(this).getOrElse(Unknown())
+    ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((ctx.paramDecl.name.getText, paramT)))) match {
+      case Right(returnT) => Right(Fun(paramT, returnT))
+      case err@Left(_) => err
+    }
+  }
+
   override def visitConstInt(ctx: ConstIntContext): Either[String, Type] = Right(Nat())
   override def visitTypeNat(ctx: TypeNatContext): Either[String, Type] = Right(Nat())
 
