@@ -17,6 +17,7 @@ class TestTypeCheck extends AnyFunSpec {
           val text = Files.readString(test)
           if (TypeCheck.isSupported(text)) {
             it(testName) {
+              println(s"running $testName...")
               TypeCheck.go(text) match {
                 case Ok() =>
                   fail("no errors found")
@@ -41,6 +42,7 @@ class TestTypeCheck extends AnyFunSpec {
       val text = Files.readString(test)
       if (TypeCheck.isSupported(text)) {
         it(testName) {
+          println(s"running $testName...")
           TypeCheck.go(text) match {
             case Ok() =>
             case Bad(msg) =>
