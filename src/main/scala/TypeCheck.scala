@@ -7,6 +7,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream, ParserRuleContext}
 
 import scala.collection.{immutable, mutable}
+import scala.jdk.CollectionConverters.IteratorHasAsScala
 
 object TypeCheck {
   def go(text: String): Result = {
@@ -21,7 +22,7 @@ object TypeCheck {
     val tree = getTree(text)
     val listener = new stellaParserBaseListener {
       var ok = true
-      val supported = Seq("#unit-type")
+      private val supported = Seq("#unit-type", "#pairs", "#tuples")
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
         ok = ok && ctx.extensionNames.stream().map(it => it.getText).allMatch(it => supported.contains(it))
       }
@@ -188,6 +189,16 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
       case Right(returnT) => Right(Fun(paramT, returnT))
       case err@Left(_) => err
     }
+  }
+
+  override def visitTypeTuple(ctx: TypeTupleContext): Either[String, Type] = {
+    val types = ctx.types.iterator().asScala.map[Type](it => it.accept(this).getOrElse(Unknown()))
+    Right(Tuple(immutable.ArraySeq.from(types)))
+  }
+
+  override def visitTuple(ctx: TupleContext): Either[String, Type] = {
+    val types = ctx.exprs.iterator().asScala.map[Type](it => it.accept(new TypeVisitor(vars, None)).getOrElse(Unknown()))
+    Right(Tuple(immutable.ArraySeq.from(types)))
   }
 
   override def visitConstInt(ctx: ConstIntContext): Either[String, Type] = Right(Nat())
