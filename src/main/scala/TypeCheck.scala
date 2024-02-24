@@ -119,25 +119,12 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     }
   }
 
-  override def visitConstInt(ctx: ConstIntContext): Either[String, Type] = {
-    Right(Nat())
-  }
+  override def visitConstInt(ctx: ConstIntContext): Either[String, Type] = Right(Nat())
+  override def visitTypeNat(ctx: TypeNatContext): Either[String, Type] = Right(Nat())
 
-  override def visitTypeNat(ctx: TypeNatContext): Either[String, Type] = {
-    Right(Nat())
-  }
-
-  override def visitTypeBool(ctx: TypeBoolContext): Either[String, Type] = {
-    Right(Bool())
-  }
-
-  override def visitConstFalse(ctx: ConstFalseContext): Either[String, Type] = {
-    Right(Bool())
-  }
-
-  override def visitConstTrue(ctx: ConstTrueContext): Either[String, Type] = {
-    Right(Bool())
-  }
+  override def visitTypeBool(ctx: TypeBoolContext): Either[String, Type] = Right(Bool())
+  override def visitConstFalse(ctx: ConstFalseContext): Either[String, Type] = Right(Bool())
+  override def visitConstTrue(ctx: ConstTrueContext): Either[String, Type] = Right(Bool())
 
   override def visitTypeFun(ctx: TypeFunContext): Either[String, Type] = {
     (ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this)) match {
