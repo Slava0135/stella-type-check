@@ -191,14 +191,23 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
     }
   }
 
-  override def visitTypeTuple(ctx: TypeTupleContext): Either[String, Type] = {
-    val types = ctx.types.iterator().asScala.map[Type](it => it.accept(this).getOrElse(Unknown()))
-    Right(Tuple(immutable.ArraySeq.from(types)))
-  }
-
-  override def visitTuple(ctx: TupleContext): Either[String, Type] = {
-    val types = ctx.exprs.iterator().asScala.map[Type](it => it.accept(new TypeVisitor(vars, None)).getOrElse(Unknown()))
-    Right(Tuple(immutable.ArraySeq.from(types)))
+  override def visitDotTuple(ctx: DotTupleContext): Either[String, Type] = {
+    ctx.expr_.accept(new TypeVisitor(vars, None)) match {
+      case Right(Tuple(a)) =>
+        Right(a.apply(ctx.index.getText.toInt - 1))
+      case Right(t) =>
+        val msg =
+          s"""expected an expression of tuple type
+            |but got expression
+            |${prettyPrint(ctx.expr_)}
+            |of type
+            |  $t
+            |in expression
+            |${prettyPrint(ctx)}
+            |""".stripMargin
+          error("ERROR_NOT_A_TUPLE", msg)
+      case err@Left(_) => err
+    }
   }
 
   override def visitConstInt(ctx: ConstIntContext): Either[String, Type] = Right(Nat())
@@ -210,6 +219,16 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
 
   override def visitTypeUnit(ctx: TypeUnitContext): Either[String, Type] = Right(UnitT())
   override def visitConstUnit(ctx: ConstUnitContext): Either[String, Type] = Right(UnitT())
+
+  override def visitTypeTuple(ctx: TypeTupleContext): Either[String, Type] = {
+    val types = ctx.types.iterator().asScala.map[Type](it => it.accept(this).getOrElse(Unknown()))
+    Right(Tuple(immutable.ArraySeq.from(types)))
+  }
+
+  override def visitTuple(ctx: TupleContext): Either[String, Type] = {
+    val types = ctx.exprs.iterator().asScala.map[Type](it => it.accept(new TypeVisitor(vars, None)).getOrElse(Unknown()))
+    Right(Tuple(immutable.ArraySeq.from(types)))
+  }
 
   override def visitTypeFun(ctx: TypeFunContext): Either[String, Type] = {
     (ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this)) match {
