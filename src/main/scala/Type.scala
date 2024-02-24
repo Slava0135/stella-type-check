@@ -14,3 +14,6 @@ final case class Bool() extends Type {
 final case class Fun(param: Type, res: Type) extends Type {
   override def toString: String = s"($param -> $res)"
 }
+final case class UnitT() extends Type {
+  override def toString: String = "Unit"
+}

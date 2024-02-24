@@ -20,13 +20,14 @@ object TypeCheck {
   def isSupported(text: String): Boolean = {
     val tree = getTree(text)
     val listener = new stellaParserBaseListener {
-      var supported = true
+      var ok = true
+      val supported = Seq("#unit-type")
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
-        supported = false
+        ok = ok && ctx.extensionNames.stream().map(it => it.getText).allMatch(it => supported.contains(it))
       }
     }
     ParseTreeWalker.DEFAULT.walk(listener, tree)
-    listener.supported
+    listener.ok
   }
 
   private def getTree(text: String): ProgramContext = {
@@ -195,6 +196,9 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   override def visitTypeBool(ctx: TypeBoolContext): Either[String, Type] = Right(Bool())
   override def visitConstFalse(ctx: ConstFalseContext): Either[String, Type] = Right(Bool())
   override def visitConstTrue(ctx: ConstTrueContext): Either[String, Type] = Right(Bool())
+
+  override def visitTypeUnit(ctx: TypeUnitContext): Either[String, Type] = Right(UnitT())
+  override def visitConstUnit(ctx: ConstUnitContext): Either[String, Type] = Right(UnitT())
 
   override def visitTypeFun(ctx: TypeFunContext): Either[String, Type] = {
     (ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this)) match {
