@@ -11,7 +11,7 @@ import scala.collection.{immutable, mutable}
 object TypeCheck {
   def go(text: String): Result = {
     val tree = getTree(text)
-    tree.accept(new TypeVisitor(immutable.Map.empty)) match {
+    tree.accept(new TypeVisitor(immutable.Map.empty, Unknown())) match {
       case Left(msg) => Bad(msg)
       case Right(_) => Ok()
     }
@@ -36,7 +36,7 @@ object TypeCheck {
   }
 }
 
-private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaParserBaseVisitor[Either[String, Type]] {
+private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: Type) extends stellaParserBaseVisitor[Either[String, Type]] {
 
   override def visitProgram(ctx: ProgramContext): Either[String, Type] = {
     val topLevelDecl = mutable.Map[String, Type]()
@@ -46,7 +46,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
         case (Right(p), Right(r)) => topLevelDecl.put(func.name.getText, Fun(p, r))
       }
     })
-    val ts = ctx.decl().stream().map(it => it.accept(new TypeVisitor(vars ++ topLevelDecl)))
+    val ts = ctx.decl().stream().map(it => it.accept(new TypeVisitor(vars ++ topLevelDecl, Unknown())))
     val err = ts.filter(it => it.isLeft).findFirst()
     if (err.isPresent) {
       return err.get()
@@ -62,7 +62,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
     val funT = (param.accept(this), ctx.returnType.accept(this)) match {
       case (Right(p), Right(r)) => Fun(p, r)
     }
-    ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((param.name.getText, funT.param)))) match {
+    ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((param.name.getText, funT.param)), funT.res)) match {
       case err@Left(_) => err
       case Right(returnT) =>
         if (returnT != funT.res) {
@@ -159,8 +159,19 @@ private class TypeVisitor(val vars: immutable.Map[String, Type]) extends stellaP
   }
 
   override def visitAbstraction(ctx: AbstractionContext): Either[String, Type] = {
+    expectedT match {
+      case Fun(_, _) =>
+      case _ =>
+        val msg =
+          s"""expected an expression of a non-function type
+            |  $expectedT
+            |but got an anonymous function at ${pos(ctx)}
+            |  ${prettyPrint(ctx)}
+            |""".stripMargin
+        return error("ERROR_UNEXPECTED_LAMBDA", msg)
+    }
     val paramT = ctx.paramDecl.accept(this).getOrElse(Unknown())
-    ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((ctx.paramDecl.name.getText, paramT)))) match {
+    ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((ctx.paramDecl.name.getText, paramT)), expectedT)) match {
       case Right(returnT) => Right(Fun(paramT, returnT))
       case err@Left(_) => err
     }
