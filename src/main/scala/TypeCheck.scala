@@ -22,7 +22,7 @@ object TypeCheck {
     val tree = getTree(text)
     val listener = new stellaParserBaseListener {
       var ok = true
-      private val supported = Seq("#unit-type", "#pairs", "#tuples")
+      private val supported = Seq("#unit-type", "#pairs", "#tuples", "#records")
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
         ok = ok && ctx.extensionNames.stream().map(it => it.getText).allMatch(it => supported.contains(it))
       }
@@ -240,6 +240,11 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   override def visitTypeTuple(ctx: TypeTupleContext): Either[String, Type] = {
     val types = ctx.types.iterator().asScala.map[Type](it => it.accept(this).getOrElse(Unknown()))
     Right(Tuple(immutable.ArraySeq.from(types)))
+  }
+
+  override def visitTypeRecord(ctx: TypeRecordContext): Either[String, Type] = {
+    val fields = ctx.fieldTypes.iterator().asScala.map[RecordField](it => RecordField(it.label.getText, it.type_.accept(this).getOrElse(Unknown())))
+    Right(Record(immutable.ArraySeq.from(fields)))
   }
 
   override def visitTuple(ctx: TupleContext): Either[String, Type] = {

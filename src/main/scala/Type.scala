@@ -31,3 +31,17 @@ final case class Tuple(types: immutable.ArraySeq[Type]) extends Type {
   }
   override def toString: String = s"{${types.addString(new StringBuilder(), ", ")}}"
 }
+final case class RecordField(name: String, t: Type) {
+  override def toString: String = s"$name : $t"
+}
+final case class Record(fields: immutable.ArraySeq[RecordField]) extends Type {
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case other: Record =>
+        fields.length == other.fields.length && fields.indices.forall(i => fields.apply(i) == other.fields.apply(i))
+      case _ =>
+        false
+    }
+  }
+  override def toString: String = s"{${fields.addString(new StringBuilder(), ", ")}}"
+}
