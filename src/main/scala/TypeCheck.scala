@@ -233,14 +233,22 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def visitRecord(ctx: RecordContext): Either[Error, Type] = {
+    def getFields = {
+      ctx.bindings.iterator().asScala.map[RecordField](it => RecordField(it.name.getText, it.expr().accept(new TypeVisitor(vars, None)).getOrElse(Unknown())))
+    }
     expectedT match {
       case None =>
-      case Some(r@Record(_)) =>
+        Right(Record(immutable.ArraySeq.from(getFields)))
+      case Some(r@Record(expectedFields)) =>
+        val unexpectedFields = getFields.iterator.filterNot(it => expectedFields.contains(it)).map(it => it.name).toSeq
+        if (unexpectedFields.nonEmpty) {
+          Left(ERROR_UNEXPECTED_RECORD_FIELDS(unexpectedFields, r))
+        } else {
+          Right(Record(immutable.ArraySeq.from(getFields)))
+        }
       case Some(t) =>
-        return Left(ERROR_UNEXPECTED_RECORD(t, ctx))
+        Left(ERROR_UNEXPECTED_RECORD(t, ctx))
     }
-    val fields = ctx.bindings.iterator().asScala.map[RecordField](it => RecordField(it.name.getText, it.expr().accept(new TypeVisitor(vars, None)).getOrElse(Unknown())))
-    Right(Record(immutable.ArraySeq.from(fields)))
   }
 
   override def visitTypeFun(ctx: TypeFunContext): Either[Error, Type] = {
