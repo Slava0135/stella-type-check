@@ -229,7 +229,22 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
 
   override def visitDotRecord(ctx: DotRecordContext): Either[String, Type] = {
     ctx.expr_.accept(new TypeVisitor(vars, None)) match {
-      case Right(r@Record(a)) => Right(Unknown())
+      case Right(r@Record(_)) =>
+        val name = ctx.label.getText
+        r.field(ctx.label.getText) match {
+          case None =>
+            val why =
+              s"""
+                |unexpected access to field $name
+                |in a record of type
+                |  $r
+                |in the expression
+                |  ${prettyPrint(ctx.expr_)}
+                |""".stripMargin
+            error("ERROR_UNEXPECTED_FIELD_ACCESS", why)
+          case Some(t) =>
+            Right(t)
+        }
       case Right(t) =>
         val why =
           s"""
@@ -294,6 +309,11 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
     }
     val types = ctx.exprs.iterator().asScala.map[Type](it => it.accept(new TypeVisitor(vars, None)).getOrElse(Unknown()))
     Right(Tuple(immutable.ArraySeq.from(types)))
+  }
+
+  override def visitRecord(ctx: RecordContext): Either[String, Type] = {
+    val fields = ctx.bindings.iterator().asScala.map[RecordField](it => RecordField(it.name.getText, it.expr().accept(new TypeVisitor(vars, None)).getOrElse(Unknown())))
+    Right(Record(immutable.ArraySeq.from(fields)))
   }
 
   override def visitTypeFun(ctx: TypeFunContext): Either[String, Type] = {

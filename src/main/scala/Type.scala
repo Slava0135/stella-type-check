@@ -35,6 +35,9 @@ final case class RecordField(name: String, t: Type) {
   override def toString: String = s"$name : $t"
 }
 final case class Record(fields: immutable.ArraySeq[RecordField]) extends Type {
+  def field(name: String): Option[Type] = {
+    fields.filter(f => f.name == name).map(it => it.t).headOption
+  }
   override def equals(obj: Any): Boolean = {
     obj match {
       case other: Record =>
