@@ -245,7 +245,22 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
 
   override def visitTuple(ctx: TupleContext): Either[String, Type] = {
     expectedT match {
-      case Some(Tuple(_)) | None =>
+      case None =>
+      case Some(t@Tuple(a)) =>
+        val expected = a.size
+        val actual = ctx.exprs.size
+        if (expected != actual) {
+          val msg =
+            s"""
+              |expected $expected components
+              |for a tuple of type
+              |  $t
+              |but got $actual
+              |in tuple
+              |${prettyPrint(ctx)}
+              |""".stripMargin
+          return error("ERROR_UNEXPECTED_TUPLE_LENGTH", msg)
+        }
       case Some(t) =>
         val msg =
           s"""
