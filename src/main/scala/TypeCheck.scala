@@ -240,12 +240,15 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
       case None =>
         Right(Record(immutable.ArraySeq.from(getFields)))
       case Some(r@Record(expectedFields)) =>
-        val unexpectedFields = getFields.iterator.filterNot(it => expectedFields.contains(it)).map(it => it.name).toSeq
+        val unexpectedFields = getFields.filterNot(it => expectedFields.contains(it)).map(it => it.name).toSeq
         if (unexpectedFields.nonEmpty) {
-          Left(ERROR_UNEXPECTED_RECORD_FIELDS(unexpectedFields, r))
-        } else {
-          Right(Record(immutable.ArraySeq.from(getFields)))
+          return Left(ERROR_UNEXPECTED_RECORD_FIELDS(unexpectedFields, r))
         }
+        val missingFields = expectedFields.filterNot(it => getFields.contains(it)).map(it => it.name)
+        if (missingFields.nonEmpty) {
+          return Left(ERROR_MISSING_RECORD_FIELDS(missingFields, r))
+        }
+        Right(Record(immutable.ArraySeq.from(getFields)))
       case Some(t) =>
         Left(ERROR_UNEXPECTED_RECORD(t, ctx))
     }

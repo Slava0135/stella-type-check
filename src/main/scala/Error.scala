@@ -145,3 +145,11 @@ final case class ERROR_UNEXPECTED_RECORD_FIELDS(fields: Seq[String], t: Type) ex
   |  $t
   |""".stripMargin
 )
+final case class ERROR_MISSING_RECORD_FIELDS(fields: Seq[String], t: Type) extends Error(
+  s"""
+  |missing fields
+  |  ${fields.addString(new StringBuilder(), ", ")}
+  |for an expected record of type
+  |  $t
+  |""".stripMargin
+)
