@@ -1,6 +1,6 @@
 package io.github.slava0135.stella
 
-import stellaParser.{AbstractionContext, ApplicationContext, DotRecordContext, DotTupleContext, ExprContext, TupleContext, VarContext}
+import stellaParser.{AbstractionContext, ApplicationContext, DotRecordContext, DotTupleContext, ExprContext, RecordContext, TupleContext, VarContext}
 
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.misc.Interval
@@ -126,6 +126,14 @@ final case class ERROR_UNEXPECTED_TUPLE(t: Type, ctx: TupleContext) extends Erro
   |expected an expression of a non-tuple type
   |  $t
   |but got a tuple
+  |${Error.prettyPrint(ctx)}
+  |""".stripMargin
+)
+final case class ERROR_UNEXPECTED_RECORD(t: Type, ctx: RecordContext) extends Error(
+  s"""
+  |expected an expression of a non-record type
+  |  $t
+  |but got a record
   |${Error.prettyPrint(ctx)}
   |""".stripMargin
 )
