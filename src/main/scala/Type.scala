@@ -6,6 +6,7 @@ sealed trait Type
 
 final case class Unknown() extends Type {
   override def toString: String = "???"
+  override def equals(obj: Any): Boolean = false
 }
 final case class Nat() extends Type {
   override def toString: String = "Nat"
