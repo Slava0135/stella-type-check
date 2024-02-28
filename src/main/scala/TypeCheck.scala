@@ -68,7 +68,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
       case err@Left(_) => err
       case Right(returnT) =>
         if (returnT != funT.res) {
-          unexpectedTypeForExpression(ctx.returnExpr, funT.res, returnT)
+          Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.returnExpr, funT.res, returnT).toString)
         } else {
           Right(funT)
         }
@@ -81,11 +81,11 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
       case err@Left(_) => return err
     }
     if (condT != Bool()) {
-      return unexpectedTypeForExpression(ctx.condition, Bool(), condT)
+      return Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.condition, Bool(), condT).toString)
     }
     (ctx.thenExpr.accept(this), ctx.elseExpr.accept(this)) match {
       case (Right(thenT), Right(elseT)) if thenT == elseT => Right(thenT)
-      case (Right(thenT), Right(elseT)) => unexpectedTypeForExpression(ctx.elseExpr, thenT, elseT)
+      case (Right(thenT), Right(elseT)) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.elseExpr, thenT, elseT).toString)
       case (err@Left(_), _) => err
       case (_, err@Left(_)) => err
     }
@@ -94,7 +94,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   override def visitSucc(ctx: SuccContext): Either[String, Type] = {
     ctx.expr().accept(new TypeVisitor(vars, Some(Nat()))) match {
       case Right(t) if t == Nat() => Right(t)
-      case Right(t) => unexpectedTypeForExpression(ctx.expr(), Nat(), t)
+      case Right(t) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.expr(), Nat(), t).toString)
       case err@Left(_) => err
     }
   }
@@ -102,7 +102,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   override def visitIsZero(ctx: IsZeroContext): Either[String, Type] = {
     ctx.expr().accept(new TypeVisitor(vars, Some(Nat()))) match {
       case Right(t) if t == Nat() => Right(Bool())
-      case Right(t) => unexpectedTypeForExpression(ctx.expr(), Nat(), t)
+      case Right(t) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.expr(), Nat(), t).toString)
       case err@Left(_) => err
     }
   }
@@ -120,7 +120,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
     ctx.n.accept(new TypeVisitor(vars, Some(Nat()))) match {
       case Right(Nat()) =>
       case err@Left(_) => return err
-      case Right(t) => return unexpectedTypeForExpression(ctx.n, Nat(), t)
+      case Right(t) => return Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.n, Nat(), t).toString)
     }
     val initialT = ctx.initial.accept(this) match {
       case Right(t) => t
@@ -129,7 +129,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
     val expectedStepT = Fun(Nat(), Fun(initialT, initialT))
     ctx.step.accept(new TypeVisitor(vars, Some(expectedStepT))) match {
       case Right(t) if t == expectedStepT =>
-      case Right(t) => return unexpectedTypeForExpression(ctx.step, expectedStepT, t)
+      case Right(t) => return Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.step, expectedStepT, t).toString)
       case err@Left(_) => return err
     }
     Right(initialT)
@@ -141,7 +141,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
         if (param == arg) {
           Right(res)
         } else {
-          unexpectedTypeForExpression(ctx.fun, param, arg)
+          Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.fun, param, arg).toString)
         }
       case (Right(Fun(_, _)), err@Left(_)) =>
         err
@@ -333,19 +333,6 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def defaultResult(): Either[String, Type] = Right(Unknown())
-
-  private def unexpectedTypeForExpression(ctx: ExprContext, expected: Type, actual: Type): Either[String, Type] = {
-    val why =
-      s"""
-         |expected type
-         |  $expected
-         |but got
-         |  $actual
-         |for expression at ${pos(ctx)}
-         |${prettyPrint(ctx)}
-         |""".stripMargin
-    error("ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION", why)
-  }
 
   private def error(tag: String, why: String): Left[String, Type] = {
     Left(
