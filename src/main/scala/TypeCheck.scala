@@ -2,9 +2,8 @@ package io.github.slava0135.stella
 
 import stellaParser._
 
-import org.antlr.v4.runtime.misc.Interval
 import org.antlr.v4.runtime.tree.ParseTreeWalker
-import org.antlr.v4.runtime.{CharStreams, CommonTokenStream, ParserRuleContext}
+import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 
 import scala.collection.{immutable, mutable}
 import scala.jdk.CollectionConverters.IteratorHasAsScala
@@ -44,9 +43,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
     val topLevelDecl = mutable.Map[String, Type]()
     ctx.decl().stream().forEach(it => {
       val func = it.asInstanceOf[DeclFunContext]
-      (func.paramDecl(0).accept(this), func.returnType.accept(this)) match {
-        case (Right(p), Right(r)) => topLevelDecl.put(func.name.getText, Fun(p, r))
-      }
+      topLevelDecl.put(func.name.getText, Fun(func.paramDecl(0).paramType.accept(new TypeContextVisitor), func.returnType.accept(new TypeContextVisitor)))
     })
     val ts = ctx.decl().stream().map(it => it.accept(new TypeVisitor(vars ++ topLevelDecl, None)))
     val err = ts.filter(it => it.isLeft).findFirst()
@@ -61,9 +58,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
 
   override def visitDeclFun(ctx: DeclFunContext): Either[Error, Type] = {
     val param = ctx.paramDecl(0)
-    val funT = (param.accept(this), ctx.returnType.accept(this)) match {
-      case (Right(p), Right(r)) => Fun(p, r)
-    }
+    val funT = Fun(param.paramType.accept(new TypeContextVisitor()), ctx.returnType.accept(new TypeContextVisitor()))
     ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((param.name.getText, funT.param)), Some(funT.res))) match {
       case err@Left(_) => err
       case Right(returnT) =>
@@ -152,7 +147,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def visitAbstraction(ctx: AbstractionContext): Either[Error, Type] = {
-    val paramT = ctx.paramDecl.accept(this).getOrElse(Unknown())
+    val paramT = ctx.paramDecl.paramType.accept(new TypeContextVisitor)
     expectedT match {
       case Some(Fun(t, r)) if t == paramT =>
         ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((ctx.paramDecl.name.getText, paramT)), Some(r))) match {
@@ -197,24 +192,9 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def visitConstInt(ctx: ConstIntContext): Either[Error, Type] = Right(Nat())
-  override def visitTypeNat(ctx: TypeNatContext): Either[Error, Type] = Right(Nat())
-
-  override def visitTypeBool(ctx: TypeBoolContext): Either[Error, Type] = Right(Bool())
   override def visitConstFalse(ctx: ConstFalseContext): Either[Error, Type] = Right(Bool())
   override def visitConstTrue(ctx: ConstTrueContext): Either[Error, Type] = Right(Bool())
-
-  override def visitTypeUnit(ctx: TypeUnitContext): Either[Error, Type] = Right(UnitT())
   override def visitConstUnit(ctx: ConstUnitContext): Either[Error, Type] = Right(UnitT())
-
-  override def visitTypeTuple(ctx: TypeTupleContext): Either[Error, Type] = {
-    val types = ctx.types.iterator().asScala.map[Type](it => it.accept(this).getOrElse(Unknown()))
-    Right(Tuple(immutable.ArraySeq.from(types)))
-  }
-
-  override def visitTypeRecord(ctx: TypeRecordContext): Either[Error, Type] = {
-    val fields = ctx.fieldTypes.iterator().asScala.map[RecordField](it => RecordField(it.label.getText, it.type_.accept(this).getOrElse(Unknown())))
-    Right(Record(immutable.ArraySeq.from(fields)))
-  }
 
   override def visitTuple(ctx: TupleContext): Either[Error, Type] = {
     expectedT match {
@@ -228,12 +208,15 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
       case Some(t) =>
         return Left(ERROR_UNEXPECTED_TUPLE(t, ctx))
     }
-    val types = ctx.exprs.iterator().asScala.map[Type](it => it.accept(new TypeVisitor(vars, None)).getOrElse(Unknown()))
-    Right(Tuple(immutable.ArraySeq.from(types)))
+    val types = ctx.exprs.iterator().asScala.map[Either[Error, Type]](it => it.accept(new TypeVisitor(vars, None))).toSeq
+    types.find(it => it.isLeft) match {
+      case Some(err@Left(_)) => err
+      case _ => Right(Tuple(immutable.ArraySeq.from(types.map(it => it.getOrElse(Unknown()))))) // TODO: error handling maybe
+    }
   }
 
   override def visitRecord(ctx: RecordContext): Either[Error, Type] = {
-    def getFields = {
+    def getFields = { // TODO handle errors
       ctx.bindings.iterator().asScala.map[RecordField](it => RecordField(it.name.getText, it.expr().accept(new TypeVisitor(vars, None)).getOrElse(Unknown())))
     }
     expectedT match {
@@ -254,21 +237,31 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
     }
   }
 
-  override def visitTypeFun(ctx: TypeFunContext): Either[Error, Type] = {
-    (ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this)) match {
-      case (Right(p), Right(r)) => Right(Fun(p, r))
-      case (err@Left(_), _) => err
-      case (_, err@Left(_)) => err
-    }
-  }
-
-  override def visitTypeParens(ctx: TypeParensContext): Either[Error, Type] = {
-    ctx.type_.accept(this)
-  }
-
   override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[Error, Type] = {
     ctx.expr_.accept(this)
   }
 
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
+}
+
+private class TypeContextVisitor extends stellaParserBaseVisitor[Type] {
+  override def visitTypeFun(ctx: TypeFunContext): Type = {
+    Fun(ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this))
+  }
+  override def visitTypeParens(ctx: TypeParensContext): Type = {
+    ctx.type_.accept(this)
+  }
+  override def visitTypeTuple(ctx: TypeTupleContext): Type = {
+    val types = ctx.types.iterator().asScala.map[Type](it => it.accept(this))
+    Tuple(immutable.ArraySeq.from(types))
+  }
+  override def visitTypeRecord(ctx: TypeRecordContext): Type = {
+    val fields = ctx.fieldTypes.iterator().asScala.map[RecordField](it => RecordField(it.label.getText, it.type_.accept(this)))
+    Record(immutable.ArraySeq.from(fields))
+  }
+  override def visitTypeUnit(ctx: TypeUnitContext): Type = UnitT()
+  override def visitTypeBool(ctx: TypeBoolContext): Type = Bool()
+  override def visitTypeNat(ctx: TypeNatContext): Type = Nat()
+
+  override def defaultResult(): Type = Unknown()
 }
