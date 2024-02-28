@@ -180,7 +180,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
           |in function at ${pos(ctx)}
           |${prettyPrint(ctx)}
           |""".stripMargin
-        return error("ERROR_UNEXPECTED_TYPE_FOR_PARAMETER", msg)
+        error("ERROR_UNEXPECTED_TYPE_FOR_PARAMETER", msg)
       case Some(t) =>
         val msg =
           s"""
@@ -189,7 +189,7 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
             |but got an anonymous function at ${pos(ctx)}
             |${prettyPrint(ctx)}
             |""".stripMargin
-        return error("ERROR_UNEXPECTED_LAMBDA", msg)
+        error("ERROR_UNEXPECTED_LAMBDA", msg)
     }
   }
 
