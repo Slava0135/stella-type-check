@@ -147,7 +147,8 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
         err
       case (Right(t), _) =>
         val msg =
-          s"""expected a function type but got
+          s"""
+            |expected a function type but got
             |  $t
             |for the expression
             |${prettyPrint(ctx.fun)}
@@ -167,7 +168,8 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
       case Some(Fun(t, _)) if t == paramT =>
       case Some(Fun(t, _)) =>
         val msg =
-          s"""expected type
+          s"""
+          |expected type
           |  $t
           |but got
           |  $paramT
@@ -178,7 +180,8 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
         return error("ERROR_UNEXPECTED_TYPE_FOR_PARAMETER", msg)
       case Some(t) =>
         val msg =
-          s"""expected an expression of a non-function type
+          s"""
+            |expected an expression of a non-function type
             |  $t
             |but got an anonymous function at ${pos(ctx)}
             |${prettyPrint(ctx)}
@@ -197,7 +200,8 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
         val index = ctx.index.getText.toInt
         if (index < 1 || index > a.length) {
           val why =
-            s"""unexpected access to component number $index
+            s"""
+              |unexpected access to component number $index
               |in a tuple
               |${prettyPrint(ctx.expr_)}
               |of length ${a.length}
@@ -210,7 +214,8 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
         }
       case Right(t) =>
         val why =
-          s"""expected an expression of tuple type
+          s"""
+            |expected an expression of tuple type
             |but got expression
             |${prettyPrint(ctx.expr_)}
             |of type
@@ -243,7 +248,8 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
       case Some(Tuple(_)) | None =>
       case Some(t) =>
         val msg =
-          s"""expected an expression of a non-tuple type
+          s"""
+            |expected an expression of a non-tuple type
             |  $t
             |but got a tuple
             |${prettyPrint(ctx)}
@@ -274,7 +280,8 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
 
   private def unexpectedTypeForExpression(ctx: ExprContext, expected: Type, actual: Type): Either[String, Type] = {
     val why =
-      s"""expected type
+      s"""
+         |expected type
          |  $expected
          |but got
          |  $actual
@@ -286,7 +293,8 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
 
   private def error(tag: String, why: String): Left[String, Type] = {
     Left(
-      s"""An error occurred during typechecking!
+      s"""
+       |An error occurred during typechecking!
        |Type Error Tag: [$tag]
        |$why
        |""".stripMargin
