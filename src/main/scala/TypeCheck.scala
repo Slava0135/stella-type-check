@@ -227,6 +227,23 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
     }
   }
 
+  override def visitDotRecord(ctx: DotRecordContext): Either[String, Type] = {
+    ctx.expr_.accept(new TypeVisitor(vars, None)) match {
+      case Right(r@Record(a)) => Right(Unknown())
+      case Right(t) =>
+        val why =
+          s"""
+            |expected a record type but got
+            |  $t
+            |for the expression
+            |${prettyPrint(ctx.expr_)}
+            |in the expression
+            |${prettyPrint(ctx)}
+            |""".stripMargin
+        error("ERROR_NOT_A_RECORD", why)
+    }
+  }
+
   override def visitConstInt(ctx: ConstIntContext): Either[String, Type] = Right(Nat())
   override def visitTypeNat(ctx: TypeNatContext): Either[String, Type] = Right(Nat())
 
