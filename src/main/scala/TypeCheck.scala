@@ -164,8 +164,11 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   override def visitAbstraction(ctx: AbstractionContext): Either[String, Type] = {
     val paramT = ctx.paramDecl.accept(this).getOrElse(Unknown())
     expectedT match {
-      case None =>
-      case Some(Fun(t, _)) if t == paramT =>
+      case Some(Fun(t, r)) if t == paramT =>
+        ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((ctx.paramDecl.name.getText, paramT)), Some(r))) match {
+          case Right(returnT) => Right(Fun(paramT, returnT))
+          case err@Left(_) => err
+        }
       case Some(Fun(t, _)) =>
         val msg =
           s"""
@@ -187,10 +190,6 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
             |${prettyPrint(ctx)}
             |""".stripMargin
         return error("ERROR_UNEXPECTED_LAMBDA", msg)
-    }
-    ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((ctx.paramDecl.name.getText, paramT)), expectedT)) match {
-      case Right(returnT) => Right(Fun(paramT, returnT))
-      case err@Left(_) => err
     }
   }
 
