@@ -239,6 +239,17 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def visitTuple(ctx: TupleContext): Either[String, Type] = {
+    expectedT match {
+      case Some(Tuple(_)) | None =>
+      case Some(t) =>
+        val msg =
+          s"""expected an expression of a non-tuple type
+            |  $t
+            |but got a tuple
+            |${prettyPrint(ctx)}
+            |""".stripMargin
+        return error("ERROR_UNEXPECTED_TUPLE",msg)
+    }
     val types = ctx.exprs.iterator().asScala.map[Type](it => it.accept(new TypeVisitor(vars, None)).getOrElse(Unknown()))
     Right(Tuple(immutable.ArraySeq.from(types)))
   }
