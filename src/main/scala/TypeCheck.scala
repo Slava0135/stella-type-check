@@ -13,7 +13,7 @@ object TypeCheck {
   def go(text: String): Result = {
     val tree = getTree(text)
     tree.accept(new TypeVisitor(immutable.Map.empty, None)) match {
-      case Left(msg) => Bad(msg)
+      case Left(err) => Bad(err.toString)
       case Right(_) => Ok()
     }
   }
@@ -38,9 +38,9 @@ object TypeCheck {
   }
 }
 
-private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: Option[Type]) extends stellaParserBaseVisitor[Either[String, Type]] {
+private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: Option[Type]) extends stellaParserBaseVisitor[Either[Error, Type]] {
 
-  override def visitProgram(ctx: ProgramContext): Either[String, Type] = {
+  override def visitProgram(ctx: ProgramContext): Either[Error, Type] = {
     val topLevelDecl = mutable.Map[String, Type]()
     ctx.decl().stream().forEach(it => {
       val func = it.asInstanceOf[DeclFunContext]
@@ -54,12 +54,12 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
       return err.get()
     }
     if (!topLevelDecl.contains("main")) {
-      return error("ERROR_MISSING_MAIN", "main function is not found in the program")
+      return Left(ERROR_MISSING_MAIN())
     }
     Right(null)
   }
 
-  override def visitDeclFun(ctx: DeclFunContext): Either[String, Type] = {
+  override def visitDeclFun(ctx: DeclFunContext): Either[Error, Type] = {
     val param = ctx.paramDecl(0)
     val funT = (param.accept(this), ctx.returnType.accept(this)) match {
       case (Right(p), Right(r)) => Fun(p, r)
@@ -68,59 +68,58 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
       case err@Left(_) => err
       case Right(returnT) =>
         if (returnT != funT.res) {
-          Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.returnExpr, funT.res, returnT).toString)
+          Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.returnExpr, funT.res, returnT))
         } else {
           Right(funT)
         }
     }
   }
 
-  override def visitIf(ctx: IfContext): Either[String, Type] = {
+  override def visitIf(ctx: IfContext): Either[Error, Type] = {
     val condT = ctx.condition.accept(new TypeVisitor(vars, Some(Bool()))) match {
       case Right(t) => t
       case err@Left(_) => return err
     }
     if (condT != Bool()) {
-      return Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.condition, Bool(), condT).toString)
+      return Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.condition, Bool(), condT))
     }
     (ctx.thenExpr.accept(this), ctx.elseExpr.accept(this)) match {
       case (Right(thenT), Right(elseT)) if thenT == elseT => Right(thenT)
-      case (Right(thenT), Right(elseT)) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.elseExpr, thenT, elseT).toString)
+      case (Right(thenT), Right(elseT)) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.elseExpr, thenT, elseT))
       case (err@Left(_), _) => err
       case (_, err@Left(_)) => err
     }
   }
 
-  override def visitSucc(ctx: SuccContext): Either[String, Type] = {
+  override def visitSucc(ctx: SuccContext): Either[Error, Type] = {
     ctx.expr().accept(new TypeVisitor(vars, Some(Nat()))) match {
       case Right(t) if t == Nat() => Right(t)
-      case Right(t) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.expr(), Nat(), t).toString)
+      case Right(t) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.expr(), Nat(), t))
       case err@Left(_) => err
     }
   }
 
-  override def visitIsZero(ctx: IsZeroContext): Either[String, Type] = {
+  override def visitIsZero(ctx: IsZeroContext): Either[Error, Type] = {
     ctx.expr().accept(new TypeVisitor(vars, Some(Nat()))) match {
       case Right(t) if t == Nat() => Right(Bool())
-      case Right(t) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.expr(), Nat(), t).toString)
+      case Right(t) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.expr(), Nat(), t))
       case err@Left(_) => err
     }
   }
 
-  override def visitVar(ctx: VarContext): Either[String, Type] = {
-    val name = ctx.name.getText
-    vars.get(name) match {
+  override def visitVar(ctx: VarContext): Either[Error, Type] = {
+    vars.get(ctx.name.getText) match {
       case None =>
-        error("ERROR_UNDEFINED_VARIABLE", s"undefined variable $name at ${pos(ctx)}")
+        Left(ERROR_UNDEFINED_VARIABLE(ctx))
       case Some(t) => Right(t)
     }
   }
 
-  override def visitNatRec(ctx: NatRecContext): Either[String, Type] = {
+  override def visitNatRec(ctx: NatRecContext): Either[Error, Type] = {
     ctx.n.accept(new TypeVisitor(vars, Some(Nat()))) match {
       case Right(Nat()) =>
       case err@Left(_) => return err
-      case Right(t) => return Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.n, Nat(), t).toString)
+      case Right(t) => return Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.n, Nat(), t))
     }
     val initialT = ctx.initial.accept(this) match {
       case Right(t) => t
@@ -129,39 +128,30 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
     val expectedStepT = Fun(Nat(), Fun(initialT, initialT))
     ctx.step.accept(new TypeVisitor(vars, Some(expectedStepT))) match {
       case Right(t) if t == expectedStepT =>
-      case Right(t) => return Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.step, expectedStepT, t).toString)
+      case Right(t) => return Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.step, expectedStepT, t))
       case err@Left(_) => return err
     }
     Right(initialT)
   }
 
-  override def visitApplication(ctx: ApplicationContext): Either[String, Type] = {
+  override def visitApplication(ctx: ApplicationContext): Either[Error, Type] = {
     (ctx.fun.accept(new TypeVisitor(vars, None)), ctx.args.get(0).accept(this)) match { // TODO
       case (Right(Fun(param, res)), Right(arg)) =>
         if (param == arg) {
           Right(res)
         } else {
-          Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.fun, param, arg).toString)
+          Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.fun, param, arg))
         }
       case (Right(Fun(_, _)), err@Left(_)) =>
         err
       case (Right(t), _) =>
-        val msg =
-          s"""
-            |expected a function type but got
-            |  $t
-            |for the expression
-            |${prettyPrint(ctx.fun)}
-            |in the function call at ${pos(ctx)}
-            |${prettyPrint(ctx)}
-            |""".stripMargin
-        error("ERROR_NOT_A_FUNCTION", msg)
+        Left(ERROR_NOT_A_FUNCTION(t, ctx))
       case (err@Left(_), _) => err
       case (_, err@Left(_)) => err
     }
   }
 
-  override def visitAbstraction(ctx: AbstractionContext): Either[String, Type] = {
+  override def visitAbstraction(ctx: AbstractionContext): Either[Error, Type] = {
     val paramT = ctx.paramDecl.accept(this).getOrElse(Unknown())
     expectedT match {
       case Some(Fun(t, r)) if t == paramT =>
@@ -170,153 +160,84 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
           case err@Left(_) => err
         }
       case Some(Fun(t, _)) =>
-        val msg =
-          s"""
-          |expected type
-          |  $t
-          |but got
-          |  $paramT
-          |for the parameter ${ctx.paramDecl.name.getText}
-          |in function at ${pos(ctx)}
-          |${prettyPrint(ctx)}
-          |""".stripMargin
-        error("ERROR_UNEXPECTED_TYPE_FOR_PARAMETER", msg)
+        Left(ERROR_UNEXPECTED_TYPE_FOR_PARAMETER(t, paramT, ctx))
       case Some(t) =>
-        val msg =
-          s"""
-            |expected an expression of a non-function type
-            |  $t
-            |but got an anonymous function at ${pos(ctx)}
-            |${prettyPrint(ctx)}
-            |""".stripMargin
-        error("ERROR_UNEXPECTED_LAMBDA", msg)
+        Left(ERROR_UNEXPECTED_LAMBDA(t, ctx))
     }
   }
 
-  override def visitDotTuple(ctx: DotTupleContext): Either[String, Type] = {
+  override def visitDotTuple(ctx: DotTupleContext): Either[Error, Type] = {
     ctx.expr_.accept(new TypeVisitor(vars, None)) match {
       case Right(t@Tuple(a)) =>
         val index = ctx.index.getText.toInt
         if (index < 1 || index > a.length) {
-          val why =
-            s"""
-              |unexpected access to component number $index
-              |in a tuple
-              |${prettyPrint(ctx.expr_)}
-              |of length ${a.length}
-              |of type $t
-              |at ${pos(ctx)}
-              |""".stripMargin
-          error("ERROR_TUPLE_INDEX_OUT_OF_BOUNDS", why)
+          Left(ERROR_TUPLE_INDEX_OUT_OF_BOUNDS(index, a.length, t, ctx))
         } else {
           Right(a.apply(index - 1))
         }
       case Right(t) =>
-        val why =
-          s"""
-            |expected an expression of tuple type
-            |but got expression
-            |${prettyPrint(ctx.expr_)}
-            |of type
-            |  $t
-            |in expression
-            |${prettyPrint(ctx)}
-            |""".stripMargin
-          error("ERROR_NOT_A_TUPLE", why)
+        Left(ERROR_NOT_A_TUPLE(t, ctx))
       case err@Left(_) => err
     }
   }
 
-  override def visitDotRecord(ctx: DotRecordContext): Either[String, Type] = {
+  override def visitDotRecord(ctx: DotRecordContext): Either[Error, Type] = {
     ctx.expr_.accept(new TypeVisitor(vars, None)) match {
       case Right(r@Record(_)) =>
         val name = ctx.label.getText
-        r.field(ctx.label.getText) match {
+        r.field(name) match {
           case None =>
-            val why =
-              s"""
-                |unexpected access to field $name
-                |in a record of type
-                |  $r
-                |in the expression
-                |  ${prettyPrint(ctx.expr_)}
-                |""".stripMargin
-            error("ERROR_UNEXPECTED_FIELD_ACCESS", why)
+            Left(ERROR_UNEXPECTED_FIELD_ACCESS(r, ctx))
           case Some(t) =>
             Right(t)
         }
       case Right(t) =>
-        val why =
-          s"""
-            |expected a record type but got
-            |  $t
-            |for the expression
-            |${prettyPrint(ctx.expr_)}
-            |in the expression
-            |${prettyPrint(ctx)}
-            |""".stripMargin
-        error("ERROR_NOT_A_RECORD", why)
+        Left(ERROR_NOT_A_RECORD(t, ctx))
     }
   }
 
-  override def visitConstInt(ctx: ConstIntContext): Either[String, Type] = Right(Nat())
-  override def visitTypeNat(ctx: TypeNatContext): Either[String, Type] = Right(Nat())
+  override def visitConstInt(ctx: ConstIntContext): Either[Error, Type] = Right(Nat())
+  override def visitTypeNat(ctx: TypeNatContext): Either[Error, Type] = Right(Nat())
 
-  override def visitTypeBool(ctx: TypeBoolContext): Either[String, Type] = Right(Bool())
-  override def visitConstFalse(ctx: ConstFalseContext): Either[String, Type] = Right(Bool())
-  override def visitConstTrue(ctx: ConstTrueContext): Either[String, Type] = Right(Bool())
+  override def visitTypeBool(ctx: TypeBoolContext): Either[Error, Type] = Right(Bool())
+  override def visitConstFalse(ctx: ConstFalseContext): Either[Error, Type] = Right(Bool())
+  override def visitConstTrue(ctx: ConstTrueContext): Either[Error, Type] = Right(Bool())
 
-  override def visitTypeUnit(ctx: TypeUnitContext): Either[String, Type] = Right(UnitT())
-  override def visitConstUnit(ctx: ConstUnitContext): Either[String, Type] = Right(UnitT())
+  override def visitTypeUnit(ctx: TypeUnitContext): Either[Error, Type] = Right(UnitT())
+  override def visitConstUnit(ctx: ConstUnitContext): Either[Error, Type] = Right(UnitT())
 
-  override def visitTypeTuple(ctx: TypeTupleContext): Either[String, Type] = {
+  override def visitTypeTuple(ctx: TypeTupleContext): Either[Error, Type] = {
     val types = ctx.types.iterator().asScala.map[Type](it => it.accept(this).getOrElse(Unknown()))
     Right(Tuple(immutable.ArraySeq.from(types)))
   }
 
-  override def visitTypeRecord(ctx: TypeRecordContext): Either[String, Type] = {
+  override def visitTypeRecord(ctx: TypeRecordContext): Either[Error, Type] = {
     val fields = ctx.fieldTypes.iterator().asScala.map[RecordField](it => RecordField(it.label.getText, it.type_.accept(this).getOrElse(Unknown())))
     Right(Record(immutable.ArraySeq.from(fields)))
   }
 
-  override def visitTuple(ctx: TupleContext): Either[String, Type] = {
+  override def visitTuple(ctx: TupleContext): Either[Error, Type] = {
     expectedT match {
       case None =>
       case Some(t@Tuple(a)) =>
         val expected = a.size
         val actual = ctx.exprs.size
         if (expected != actual) {
-          val msg =
-            s"""
-              |expected $expected components
-              |for a tuple of type
-              |  $t
-              |but got $actual
-              |in tuple
-              |${prettyPrint(ctx)}
-              |""".stripMargin
-          return error("ERROR_UNEXPECTED_TUPLE_LENGTH", msg)
+          return Left(ERROR_UNEXPECTED_TUPLE_LENGTH(expected, actual, t, ctx))
         }
       case Some(t) =>
-        val msg =
-          s"""
-            |expected an expression of a non-tuple type
-            |  $t
-            |but got a tuple
-            |${prettyPrint(ctx)}
-            |""".stripMargin
-        return error("ERROR_UNEXPECTED_TUPLE",msg)
+        return Left(ERROR_UNEXPECTED_TUPLE(t, ctx))
     }
     val types = ctx.exprs.iterator().asScala.map[Type](it => it.accept(new TypeVisitor(vars, None)).getOrElse(Unknown()))
     Right(Tuple(immutable.ArraySeq.from(types)))
   }
 
-  override def visitRecord(ctx: RecordContext): Either[String, Type] = {
+  override def visitRecord(ctx: RecordContext): Either[Error, Type] = {
     val fields = ctx.bindings.iterator().asScala.map[RecordField](it => RecordField(it.name.getText, it.expr().accept(new TypeVisitor(vars, None)).getOrElse(Unknown())))
     Right(Record(immutable.ArraySeq.from(fields)))
   }
 
-  override def visitTypeFun(ctx: TypeFunContext): Either[String, Type] = {
+  override def visitTypeFun(ctx: TypeFunContext): Either[Error, Type] = {
     (ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this)) match {
       case (Right(p), Right(r)) => Right(Fun(p, r))
       case (err@Left(_), _) => err
@@ -324,33 +245,13 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
     }
   }
 
-  override def visitTypeParens(ctx: TypeParensContext): Either[String, Type] = {
+  override def visitTypeParens(ctx: TypeParensContext): Either[Error, Type] = {
     ctx.type_.accept(this)
   }
 
-  override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[String, Type] = {
+  override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[Error, Type] = {
     ctx.expr_.accept(this)
   }
 
-  override def defaultResult(): Either[String, Type] = Right(Unknown())
-
-  private def error(tag: String, why: String): Left[String, Type] = {
-    Left(
-      s"""
-       |An error occurred during typechecking!
-       |Type Error Tag: [$tag]
-       |$why
-       |""".stripMargin
-    )
-  }
-
-  private def prettyPrint(ctx: ParserRuleContext): String = {
-    if (ctx.start == null || ctx.stop == null || ctx.start.getStartIndex < 0 || ctx.stop.getStopIndex < 0)
-      return ctx.getText
-    ctx.start.getInputStream.getText(Interval.of(ctx.start.getStartIndex, ctx.stop.getStopIndex)).indent(2)
-  }
-
-  private def pos(ctx: ParserRuleContext): String = {
-    s"line ${ctx.start.getLine}"
-  }
+  override def defaultResult(): Either[Error, Type] = Right(Unknown())
 }
