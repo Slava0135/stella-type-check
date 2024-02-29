@@ -18,8 +18,9 @@ object Main {
       sys.exit(1)
     }
     val text = Files.readString(path)
-    if (!TypeCheck.isSupported(text)) {
-      Console.err.println("unsupported extension")
+    val unsupported = TypeCheck.unsupportedExtensions(text)
+    if (unsupported.nonEmpty) {
+      Console.err.println(s"unsupported extensions: ${unsupported.addString(new StringBuilder(), ",")}")
       sys.exit(1)
     }
     TypeCheck.go(text) match {

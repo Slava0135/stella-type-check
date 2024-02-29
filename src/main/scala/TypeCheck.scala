@@ -17,11 +17,11 @@ object TypeCheck {
     }
   }
 
-  def isSupported(text: String): Boolean = {
+  def unsupportedExtensions(text: String): Set[String] = {
     val tree = getTree(text)
     val listener = new stellaParserBaseListener {
-      var ok = true
-      private val supported = Seq(
+      var required = Set.empty[String]
+      private val supported = Set(
         "#unit-type",
         "#pairs",
         "#tuples",
@@ -30,12 +30,15 @@ object TypeCheck {
         "#type-ascriptions",
         "#let-bindings",
       )
+
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
-        ok = ok && ctx.extensionNames.stream().map(it => it.getText).allMatch(it => supported.contains(it))
+        ctx.extensionNames.iterator().asScala.foreach(it => required += it.getText)
       }
+
+      def unsupported(): Set[String] = required -- supported
     }
     ParseTreeWalker.DEFAULT.walk(listener, tree)
-    listener.ok
+    listener.unsupported()
   }
 
   private def getTree(text: String): ProgramContext = {

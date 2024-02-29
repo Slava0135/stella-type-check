@@ -16,7 +16,8 @@ class TestTypeCheck extends AnyFunSpec {
         Files.list(errors).iterator().asScala.foreach { test =>
           val testName = test.getFileName.toString
           val text = Files.readString(test)
-          if (TypeCheck.isSupported(text)) {
+          val unsupported = TypeCheck.unsupportedExtensions(text)
+          if (unsupported.isEmpty) {
             it(testName, Tag(errorTag), Tag(testName)) {
               TypeCheck.go(text) match {
                 case Ok() =>
@@ -28,7 +29,7 @@ class TestTypeCheck extends AnyFunSpec {
               }
             }
           } else {
-            ignore(s"$testName : unsupported extension") {
+            ignore(s"$testName ~ ${unsupported.addString(new StringBuilder(), ",")}") {
             }
           }
         }
@@ -40,7 +41,8 @@ class TestTypeCheck extends AnyFunSpec {
     Files.list(testDir).iterator().asScala.foreach { test =>
       val testName = test.getFileName.toString
       val text = Files.readString(test)
-      if (TypeCheck.isSupported(text)) {
+      val unsupported = TypeCheck.unsupportedExtensions(text)
+      if (unsupported.isEmpty) {
         it(testName, Tag(testName)) {
           TypeCheck.go(text) match {
             case Ok() =>
@@ -49,7 +51,7 @@ class TestTypeCheck extends AnyFunSpec {
           }
         }
       } else {
-        ignore(s"$testName : unsupported extension") {
+        ignore(s"$testName ~ ${unsupported.addString(new StringBuilder(), ",")}") {
         }
       }
     }
