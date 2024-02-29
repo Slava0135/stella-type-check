@@ -88,7 +88,7 @@ final case class ERROR_NOT_A_TUPLE(t: Type, ctx: DotTupleContext) extends Error(
   |${Error.prettyPrint(ctx.expr_)}
   |of type
   |  $t
-  |in expression
+  |in expression at ${Error.pos(ctx)}
   |${Error.prettyPrint(ctx)}
   |""".stripMargin
 )
@@ -97,7 +97,7 @@ final case class ERROR_UNEXPECTED_FIELD_ACCESS(r: Type, ctx: DotRecordContext) e
   |unexpected access to field ${ctx.label.getText}
   |in a record of type
   |  $r
-  |in the expression
+  |in the expression at ${Error.pos(ctx)}
   |  ${Error.prettyPrint(ctx.expr_)}
   |""".stripMargin
 )
@@ -107,7 +107,7 @@ final case class ERROR_NOT_A_RECORD(t: Type, ctx: DotRecordContext) extends Erro
   |  $t
   |for the expression
   |${Error.prettyPrint(ctx.expr_)}
-  |in the expression
+  |in the expression at ${Error.pos(ctx)}
   |${Error.prettyPrint(ctx)}
   |""".stripMargin
 )
@@ -117,7 +117,7 @@ final case class ERROR_UNEXPECTED_TUPLE_LENGTH(expected: Int, actual: Int, t: Ty
   |for a tuple of type
   |  $t
   |but got $actual
-  |in tuple
+  |in tuple at ${Error.pos(ctx)}
   |${Error.prettyPrint(ctx)}
   |""".stripMargin
 )
@@ -125,7 +125,7 @@ final case class ERROR_UNEXPECTED_TUPLE(t: Type, ctx: TupleContext) extends Erro
   s"""
   |expected an expression of a non-tuple type
   |  $t
-  |but got a tuple
+  |but got a tuple at ${Error.pos(ctx)}
   |${Error.prettyPrint(ctx)}
   |""".stripMargin
 )
@@ -133,23 +133,23 @@ final case class ERROR_UNEXPECTED_RECORD(t: Type, ctx: RecordContext) extends Er
   s"""
   |expected an expression of a non-record type
   |  $t
-  |but got a record
+  |but got a record at ${Error.pos(ctx)}
   |${Error.prettyPrint(ctx)}
   |""".stripMargin
 )
-final case class ERROR_UNEXPECTED_RECORD_FIELDS(fields: Seq[String], t: Type) extends Error(
+final case class ERROR_UNEXPECTED_RECORD_FIELDS(fields: Seq[String], t: Type, ctx: RecordContext) extends Error(
   s"""
   |unexpected fields
   |  ${fields.addString(new StringBuilder(), ", ")}
-  |for an expected record of type
+  |for an expected record of type at ${Error.pos(ctx)}
   |  $t
   |""".stripMargin
 )
-final case class ERROR_MISSING_RECORD_FIELDS(fields: Seq[String], t: Type) extends Error(
+final case class ERROR_MISSING_RECORD_FIELDS(fields: Seq[String], t: Type, ctx: RecordContext) extends Error(
   s"""
   |missing fields
   |  ${fields.addString(new StringBuilder(), ", ")}
-  |for an expected record of type
+  |for an expected record of type at ${Error.pos(ctx)}
   |  $t
   |""".stripMargin
 )
