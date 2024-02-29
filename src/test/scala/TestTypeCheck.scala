@@ -1,5 +1,6 @@
 package io.github.slava0135.stella
 
+import org.scalatest.Tag
 import org.scalatest.funspec.AnyFunSpec
 
 import java.nio.file.{FileSystems, Files, Paths}
@@ -16,15 +17,13 @@ class TestTypeCheck extends AnyFunSpec {
           val testName = test.getFileName.toString
           val text = Files.readString(test)
           if (TypeCheck.isSupported(text)) {
-            it(testName) {
-              println(s"running $testName...")
+            it(testName, Tag(errorTag), Tag(testName)) {
               TypeCheck.go(text) match {
                 case Ok() =>
                   fail("no errors found")
                 case Bad(msg) =>
-                  println(msg)
                   if (!msg.contains(errorTag)) {
-                    fail("wrong error type")
+                    fail(s"wrong error type\n$msg")
                   }
               }
             }
@@ -42,8 +41,7 @@ class TestTypeCheck extends AnyFunSpec {
       val testName = test.getFileName.toString
       val text = Files.readString(test)
       if (TypeCheck.isSupported(text)) {
-        it(testName) {
-          println(s"running $testName...")
+        it(testName, Tag(testName)) {
           TypeCheck.go(text) match {
             case Ok() =>
             case Bad(msg) =>
