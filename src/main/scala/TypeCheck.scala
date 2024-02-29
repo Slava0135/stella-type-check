@@ -130,19 +130,17 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def visitApplication(ctx: ApplicationContext): Either[Error, Type] = {
-    (ctx.fun.accept(new TypeVisitor(vars, None)), ctx.args.get(0).accept(this)) match { // TODO
-      case (Right(Fun(param, res)), Right(arg)) =>
-        if (param == arg) {
-          Right(res)
-        } else {
-          Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.fun, param, arg))
+    ctx.fun.accept(new TypeVisitor(vars, None)) match {
+      case Right(Fun(param, res)) =>
+        ctx.args.get(0).accept(new TypeVisitor(vars, Some(param))) match {
+          case Right(arg) if param == arg =>
+            Right(res)
+          case Right(arg) =>
+              Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.fun, param, arg))
+          case err@Left(_) => err
         }
-      case (Right(Fun(_, _)), err@Left(_)) =>
-        err
-      case (Right(t), _) =>
-        Left(ERROR_NOT_A_FUNCTION(t, ctx))
-      case (err@Left(_), _) => err
-      case (_, err@Left(_)) => err
+      case Right(t) => Left(ERROR_NOT_A_FUNCTION(t, ctx))
+      case err@Left(_) => err
     }
   }
 
