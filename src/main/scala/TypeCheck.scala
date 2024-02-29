@@ -232,11 +232,11 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
         getFields match {
           case Left(err) => Left(err)
           case Right(fields) =>
-            val unexpectedFields = getFields.getOrElse(null).filterNot(it => expectedFields.contains(it)).map(it => it.name)
+            val unexpectedFields = fields.map(it => it.name).filterNot(it => expectedFields.map(it => it.name).contains(it))
             if (unexpectedFields.nonEmpty) {
               return Left(ERROR_UNEXPECTED_RECORD_FIELDS(unexpectedFields, r, ctx))
             }
-            val missingFields = expectedFields.filterNot(it => getFields.getOrElse(null).contains(it)).map(it => it.name)
+            val missingFields = expectedFields.map(it => it.name).filterNot(it => fields.map(it => it.name).contains(it))
             if (missingFields.nonEmpty) {
               return Left(ERROR_MISSING_RECORD_FIELDS(missingFields, r, ctx))
             }
