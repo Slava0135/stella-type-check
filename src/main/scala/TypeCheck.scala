@@ -208,30 +208,42 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
       case Some(t) =>
         return Left(ERROR_UNEXPECTED_TUPLE(t, ctx))
     }
-    val types = ctx.exprs.iterator().asScala.map[Either[Error, Type]](it => it.accept(new TypeVisitor(vars, None))).toSeq
-    types.find(it => it.isLeft) match {
-      case Some(err@Left(_)) => err
-      case _ => Right(Tuple(immutable.ArraySeq.from(types.map(it => it.getOrElse(Unknown()))))) // TODO: error handling maybe
+    val typesOrErr = ctx.exprs.iterator().asScala.map[Either[Error, Type]](it => it.accept(new TypeVisitor(vars, None))).toSeq
+    liftEither(typesOrErr) match {
+      case Right(types) => Right(Tuple(immutable.ArraySeq.from(types)))
+      case Left(err) => Left(err)
     }
   }
 
   override def visitRecord(ctx: RecordContext): Either[Error, Type] = {
-    def getFields = { // TODO handle errors
-      ctx.bindings.iterator().asScala.map[RecordField](it => RecordField(it.name.getText, it.expr().accept(new TypeVisitor(vars, None)).getOrElse(Unknown())))
+    def getFields = {
+      liftEither(ctx.bindings.iterator().asScala.map[Either[Error, RecordField]](it => {
+        it.expr().accept(new TypeVisitor(vars, None)) match {
+          case Left(err) => Left(err)
+          case Right(t) => Right(RecordField(it.name.getText, t))
+        }
+      }).toSeq)
     }
     expectedT match {
       case None =>
-        Right(Record(immutable.ArraySeq.from(getFields)))
+        getFields match {
+          case Left(err) => Left(err)
+          case Right(fields) => Right(Record(immutable.ArraySeq.from(fields)))
+        }
       case Some(r@Record(expectedFields)) =>
-        val unexpectedFields = getFields.filterNot(it => expectedFields.contains(it)).map(it => it.name).toSeq
-        if (unexpectedFields.nonEmpty) {
-          return Left(ERROR_UNEXPECTED_RECORD_FIELDS(unexpectedFields, r))
+        getFields match {
+          case Left(err) => Left(err)
+          case Right(fields) =>
+            val unexpectedFields = getFields.getOrElse(null).filterNot(it => expectedFields.contains(it)).map(it => it.name)
+            if (unexpectedFields.nonEmpty) {
+              return Left(ERROR_UNEXPECTED_RECORD_FIELDS(unexpectedFields, r))
+            }
+            val missingFields = expectedFields.filterNot(it => getFields.getOrElse(null).contains(it)).map(it => it.name)
+            if (missingFields.nonEmpty) {
+              return Left(ERROR_MISSING_RECORD_FIELDS(missingFields, r))
+            }
+            Right(Record(immutable.ArraySeq.from(fields)))
         }
-        val missingFields = expectedFields.filterNot(it => getFields.contains(it)).map(it => it.name)
-        if (missingFields.nonEmpty) {
-          return Left(ERROR_MISSING_RECORD_FIELDS(missingFields, r))
-        }
-        Right(Record(immutable.ArraySeq.from(getFields)))
       case Some(t) =>
         Left(ERROR_UNEXPECTED_RECORD(t, ctx))
     }
@@ -242,6 +254,11 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   }
 
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
+
+  private def liftEither[A, B](s: Seq[Either[A, B]]): Either[A, Seq[B]] =
+    s.foldRight(Right(Nil): Either[A, List[B]]) {
+      (e, acc) => for (xs <- acc; x <- e) yield x :: xs
+    }
 }
 
 private class TypeContextVisitor extends stellaParserBaseVisitor[Type] {
