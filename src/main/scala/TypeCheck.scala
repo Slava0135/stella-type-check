@@ -21,7 +21,7 @@ object TypeCheck {
     val tree = getTree(text)
     val listener = new stellaParserBaseListener {
       var ok = true
-      private val supported = Seq("#unit-type", "#pairs", "#tuples", "#records")
+      private val supported = Seq("#unit-type", "#pairs", "#tuples", "#records", "#natural-literals")
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
         ok = ok && ctx.extensionNames.stream().map(it => it.getText).allMatch(it => supported.contains(it))
       }
