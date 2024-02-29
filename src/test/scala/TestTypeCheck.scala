@@ -28,7 +28,7 @@ class TestTypeCheck extends AnyFunSpec {
               }
             }
           } else {
-            ignore(s"($testName:1) : unsupported extension") {
+            ignore(s"$testName : unsupported extension") {
             }
           }
         }
@@ -49,7 +49,7 @@ class TestTypeCheck extends AnyFunSpec {
           }
         }
       } else {
-        ignore(s"($testName:1) : unsupported extension") {
+        ignore(s"$testName : unsupported extension") {
         }
       }
     }
