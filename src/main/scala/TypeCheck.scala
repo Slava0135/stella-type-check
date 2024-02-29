@@ -21,7 +21,7 @@ object TypeCheck {
     val tree = getTree(text)
     val listener = new stellaParserBaseListener {
       var ok = true
-      private val supported = Seq("#unit-type", "#pairs", "#tuples", "#records", "#natural-literals")
+      private val supported = Seq("#unit-type", "#pairs", "#tuples", "#records", "#natural-literals", "#type-ascriptions")
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
         ok = ok && ctx.extensionNames.stream().map(it => it.getText).allMatch(it => supported.contains(it))
       }
@@ -255,6 +255,19 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
 
   override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[Error, Type] = {
     ctx.expr_.accept(this)
+  }
+
+  override def visitTypeAsc(ctx: TypeAscContext): Either[Error, Type] = {
+    ctx.expr().accept(this) match {
+      case Right(expected) =>
+        val actual = ctx.type_.accept(new TypeContextVisitor)
+        if (expected == actual) { // TODO: Unknown???
+          Right(actual)
+        } else {
+          Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expected, actual))
+        }
+      case err@Left(_) => err
+    }
   }
 
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
