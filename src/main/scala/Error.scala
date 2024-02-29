@@ -13,7 +13,7 @@ object Error {
   }
 
   def pos(ctx: ParserRuleContext): String = {
-    s"line ${ctx.start.getLine}"
+    s"${ctx.start.getLine}:${ctx.start.getCharPositionInLine}"
   }
 }
 
