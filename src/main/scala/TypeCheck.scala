@@ -21,7 +21,15 @@ object TypeCheck {
     val tree = getTree(text)
     val listener = new stellaParserBaseListener {
       var ok = true
-      private val supported = Seq("#unit-type", "#pairs", "#tuples", "#records", "#natural-literals", "#type-ascriptions")
+      private val supported = Seq(
+        "#unit-type",
+        "#pairs",
+        "#tuples",
+        "#records",
+        "#natural-literals",
+        "#type-ascriptions",
+        "#let-bindings"
+      )
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
         ok = ok && ctx.extensionNames.stream().map(it => it.getText).allMatch(it => supported.contains(it))
       }
@@ -147,6 +155,11 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
   override def visitAbstraction(ctx: AbstractionContext): Either[Error, Type] = {
     val paramT = ctx.paramDecl.paramType.accept(new TypeContextVisitor)
     expectedT match {
+      case None =>
+        ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((ctx.paramDecl.name.getText, paramT)), None)) match {
+          case Right(returnT) => Right(Fun(paramT, returnT))
+          case err@Left(_) => err
+        }
       case Some(Fun(t, r)) if t == paramT =>
         ctx.returnExpr.accept(new TypeVisitor(vars ++ Seq((ctx.paramDecl.name.getText, paramT)), Some(r))) match {
           case Right(returnT) => Right(Fun(paramT, returnT))
@@ -268,6 +281,17 @@ private class TypeVisitor(val vars: immutable.Map[String, Type], val expectedT: 
         }
       case err@Left(_) => err
     }
+  }
+
+  override def visitLet(ctx: LetContext): Either[Error, Type] = {
+    ctx.patternBinding.rhs.accept(new TypeVisitor(vars, None)) match {
+      case Right(t) => ctx.body.accept(new TypeVisitor(vars ++ Seq((ctx.patternBinding.pat.asInstanceOf[PatternVarContext].getText, t)), expectedT))
+      case err@Left(_) => err
+    }
+  }
+
+  override def visitParenthesisedExpr(ctx: ParenthesisedExprContext): Either[Error, Type] = {
+    ctx.expr().accept(this)
   }
 
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
