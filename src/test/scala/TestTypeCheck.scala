@@ -20,15 +20,15 @@ class TestTypeCheck extends AnyFunSpec {
             it(testName, Tag(errorTag), Tag(testName)) {
               TypeCheck.go(text) match {
                 case Ok() =>
-                  fail("no errors found")
+                  fail(s"($testName:1) no errors found")
                 case Bad(msg) =>
                   if (!msg.contains(errorTag)) {
-                    fail(s"wrong error type\n$msg")
+                    fail(s"($testName:1) wrong error type\n$msg")
                   }
               }
             }
           } else {
-            ignore(s"$testName : unsupported extension") {
+            ignore(s"($testName:1) : unsupported extension") {
             }
           }
         }
@@ -45,11 +45,11 @@ class TestTypeCheck extends AnyFunSpec {
           TypeCheck.go(text) match {
             case Ok() =>
             case Bad(msg) =>
-              fail(s"invalid error:\n$msg")
+              fail(s"($testName:1) invalid error:\n$msg")
           }
         }
       } else {
-        ignore(s"$testName : unsupported extension") {
+        ignore(s"($testName:1) : unsupported extension") {
         }
       }
     }
