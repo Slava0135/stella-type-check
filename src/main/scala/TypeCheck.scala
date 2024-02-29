@@ -219,18 +219,16 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 
   override def visitRecord(ctx: RecordContext): Either[Error, Type] = {
     def getFields = {
-      var i = 0
-      liftEither(ctx.bindings.iterator().asScala.map[Either[Error, RecordField]](it => {
+      liftEither(ctx.bindings.iterator().asScala.map[Either[Error, RecordField]] { it =>
         val newExpectedT = expectedT match {
           case Some(r@Record(_)) => r.field(it.name.getText) // TODO: missing field here?
           case None => None
         }
-        i += 1
         it.expr().accept(copy(vars, newExpectedT)) match {
           case Left(err) => Left(err)
           case Right(t) => Right(RecordField(it.name.getText, t))
         }
-      }).toSeq)
+      }.toSeq)
     }
     expectedT match {
       case None =>
