@@ -57,10 +57,9 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       val func = it.asInstanceOf[DeclFunContext]
       topLevelDecl.put(func.name.getText, Fun(func.paramDecl(0).paramType.accept(new TypeContextVisitor), func.returnType.accept(new TypeContextVisitor)))
     })
-    val ts = ctx.decl().stream().map(it => it.accept(copy(vars ++ topLevelDecl, None)))
-    val err = ts.filter(it => it.isLeft).findFirst()
-    if (err.isPresent) {
-      return err.get()
+    liftEither(ctx.decl().iterator().asScala.map(it => it.accept(copy(vars ++ topLevelDecl, None))).toSeq) match {
+      case Left(err) => return Left(err)
+      case _ =>
     }
     if (!topLevelDecl.contains("main")) {
       return Left(ERROR_MISSING_MAIN())
