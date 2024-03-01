@@ -336,7 +336,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitList(ctx: ListContext): Either[Error, Type] = {
-    def go(t: Option[Type]) = {
+    def go(t: Option[Type]) = { // TODO: check expected type?
       if (ctx.expr().isEmpty) {
         ctx.parent match {
           case _: TypeAscContext => Right(Unknown())
@@ -344,7 +344,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         }
       } else {
         ctx.expr.accept(copy(vars, None)) match {
-          case Right(listT) if t.isEmpty || t.contains(listT) =>
+          case Right(listT) =>
             liftEither(ctx.expr().iterator().asScala.map(it => it.accept(copy(vars, Some(listT)))).toSeq) match {
               case Right(_) => Right(ListT(listT))
               case Left(err) => Left(err)
