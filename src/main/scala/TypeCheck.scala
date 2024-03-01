@@ -336,16 +336,26 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitList(ctx: ListContext): Either[Error, Type] = {
-    expectedT match {
-      case Some(ListT(t)) =>
-      case Some(t) =>
-        return Left(ERROR_UNEXPECTED_LIST(t, ctx))
-      case None =>
-        if (ctx.expr().isEmpty) {
-          return Right(Unknown())
+    def go(t: Option[Type]) = {
+      if (ctx.expr().isEmpty) {
+        Right(Unknown()) // TODO: List of Unknown???
+      } else {
+        ctx.expr.accept(copy(vars, None)) match {
+          case Right(listT) if t.isEmpty || t.contains(listT) =>
+            liftEither(ctx.expr().iterator().asScala.map(it => it.accept(copy(vars, Some(listT)))).toSeq) match {
+              case Right(_) => Right(ListT(listT))
+              case Left(err) => Left(err)
+            }
+          case err@Left(_) => err
         }
+      }
     }
-    defaultResult()
+    expectedT match {
+      case Some(ListT(t)) => go(Some(t))
+      case Some(t) =>
+        Left(ERROR_UNEXPECTED_LIST(t, ctx))
+      case None => go(None)
+    }
   }
 
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
