@@ -205,3 +205,8 @@ final case class ERROR_NOT_A_LIST(t: Type, ctx: ExprContext) extends Error(
   |${Error.prettyPrint(ctx)}
   |""".stripMargin
 )
+final case class ERROR_AMBIGUOUS_LIST_TYPE() extends Error(
+  s"""
+  |type inference of empty lists is not supported (use type ascriptions)
+  |""".stripMargin
+)

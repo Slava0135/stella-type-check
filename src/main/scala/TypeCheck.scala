@@ -338,7 +338,10 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   override def visitList(ctx: ListContext): Either[Error, Type] = {
     def go(t: Option[Type]) = {
       if (ctx.expr().isEmpty) {
-        Right(Unknown()) // TODO: List of Unknown???
+        ctx.parent match {
+          case _: TypeAscContext => Right(Unknown())
+          case _ => Left(ERROR_AMBIGUOUS_LIST_TYPE())
+        }
       } else {
         ctx.expr.accept(copy(vars, None)) match {
           case Right(listT) if t.isEmpty || t.contains(listT) =>
