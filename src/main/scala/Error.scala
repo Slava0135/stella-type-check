@@ -1,6 +1,6 @@
 package io.github.slava0135.stella
 
-import stellaParser.{AbstractionContext, ApplicationContext, DotRecordContext, DotTupleContext, ExprContext, MatchContext, RecordContext, TupleContext, VarContext}
+import stellaParser.{AbstractionContext, ApplicationContext, DotRecordContext, DotTupleContext, ExprContext, MatchContext, PatternContext, RecordContext, TupleContext, VarContext}
 
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.misc.Interval
@@ -166,5 +166,13 @@ final case class ERROR_ILLEGAL_EMPTY_MATCHING(ctx: MatchContext) extends Error(
   |illegal empty matching
   |in expression at ${Error.pos(ctx)}
   |${Error.prettyPrint(ctx)}
+  |""".stripMargin
+)
+final case class ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t: Type, ctx: PatternContext) extends Error(
+  s"""
+  |unexpected pattern at ${Error.pos(ctx)}
+  |${Error.prettyPrint(ctx)}
+  |when pattern matching is expected for type
+  |  $t
   |""".stripMargin
 )
