@@ -31,6 +31,7 @@ object TypeCheck {
         "#let-bindings",
         "#sum-types",
         "#lists",
+        "#fixpoint-combinator",
       )
 
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
@@ -148,7 +149,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case Right(arg) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx.fun, param, arg))
           case err@Left(_) => err
         }
-      case Right(t) => Left(ERROR_NOT_A_FUNCTION(t, ctx))
+      case Right(t) => Left(ERROR_NOT_A_FUNCTION(t, Left(ctx)))
       case err@Left(_) => err
     }
   }
@@ -392,6 +393,14 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     ctx.list.accept(copy(vars, expectedT.map(it => ListT(it)))) match {
       case Right(ListT(_)) => Right(Bool())
       case Right(t) => Left(ERROR_NOT_A_LIST(t, ctx))
+      case err@Left(_) => err
+    }
+  }
+
+  override def visitFix(ctx: FixContext): Either[Error, Type] = {
+    ctx.expr().accept(copy(vars, expectedT.map(it => Fun(it, it)))) match {
+      case Right(Fun(_, r)) => Right(r)
+      case Right(t) => Left(ERROR_NOT_A_FUNCTION(t, Right(ctx)))
       case err@Left(_) => err
     }
   }

@@ -1,6 +1,6 @@
 package io.github.slava0135.stella
 
-import stellaParser.{AbstractionContext, ApplicationContext, DotRecordContext, DotTupleContext, ExprContext, ListContext, MatchContext, PatternContext, RecordContext, TupleContext, VarContext}
+import stellaParser.{AbstractionContext, ApplicationContext, DotRecordContext, DotTupleContext, ExprContext, FixContext, ListContext, MatchContext, PatternContext, RecordContext, TupleContext, VarContext}
 
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.misc.Interval
@@ -46,15 +46,27 @@ final case class ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx: ExprContext, expected
   |${Error.prettyPrint(ctx)}
   |""".stripMargin
 )
-final case class ERROR_NOT_A_FUNCTION(t: Type, ctx: ApplicationContext) extends Error(
-  s"""
-  |expected a function type but got
-  |  $t
-  |for the expression
-  |${Error.prettyPrint(ctx.fun)}
-  |in the function call at ${Error.pos(ctx)}
-  |${Error.prettyPrint(ctx)}
-  |""".stripMargin
+final case class ERROR_NOT_A_FUNCTION(t: Type, ctx: Either[ApplicationContext, FixContext]) extends Error(
+  ctx match {
+    case Left(ctx) =>
+      s"""
+      |expected a function type but got
+      |  $t
+      |for the expression
+      |${Error.prettyPrint(ctx.fun)}
+      |in the function call at ${Error.pos(ctx)}
+      |${Error.prettyPrint(ctx)}
+      |""".stripMargin
+    case Right(ctx) =>
+      s"""
+      |expected a one-argument function type but got
+      |  $t
+      |for the expression
+      |${Error.prettyPrint(ctx.expr())}
+      |in the expression
+      |${Error.prettyPrint(ctx)}
+      |""".stripMargin
+  }
 )
 final case class ERROR_UNEXPECTED_TYPE_FOR_PARAMETER(t: Type, paramT: Type, ctx: AbstractionContext) extends Error(
   s"""
