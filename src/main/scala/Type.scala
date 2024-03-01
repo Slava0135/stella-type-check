@@ -1,8 +1,12 @@
 package io.github.slava0135.stella
 
+import stellaParser.{PatternContext, PatternInlContext, PatternInrContext, PatternVarContext}
+
 import scala.collection.immutable
 
-sealed trait Type
+sealed trait Type {
+  def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = Seq("???")
+}
 
 final case class Unknown() extends Type {
   override def toString: String = "???"
@@ -50,4 +54,18 @@ final case class Record(fields: immutable.ArraySeq[RecordField]) extends Type {
 }
 final case class Sum(left: Type, right: Type) extends Type {
   override def toString: String = s"$left + $right"
+
+  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
+    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
+      return Seq.empty
+    }
+    var res = List.empty[String]
+    if (!patterns.exists(p => p.isInstanceOf[PatternInlContext])) {
+      res = res :+ "inl(_)"
+    }
+    if (!patterns.exists(p => p.isInstanceOf[PatternInrContext])) {
+      res = res :+ "inr(_)"
+    }
+    res
+  }
 }

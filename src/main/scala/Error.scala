@@ -15,6 +15,10 @@ object Error {
   def pos(ctx: ParserRuleContext): String = {
     s"${ctx.start.getLine}:${ctx.start.getCharPositionInLine}"
   }
+
+  def indentList(list: Seq[Object]): String = {
+    "  " + list.addString(new StringBuilder(), "\n|  ")
+  }
 }
 
 sealed class Error(why: String) {
@@ -174,5 +178,14 @@ final case class ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t: Type, ctx: PatternContext)
   |${Error.prettyPrint(ctx)}
   |when pattern matching is expected for type
   |  $t
+  |""".stripMargin
+)
+final case class ERROR_NONEXHAUSTIVE_MATCH_PATTERNS(patterns: Seq[Object], ctx: MatchContext) extends Error(
+  s"""
+  |non-exhaustive pattern matches
+  |when matching on expression at ${Error.pos(ctx)}
+  |${Error.prettyPrint(ctx.expr())}
+  |at least the following patterns are not matched:
+  |${Error.indentList(patterns)}
   |""".stripMargin
 )
