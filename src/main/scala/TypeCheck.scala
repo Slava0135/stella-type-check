@@ -358,6 +358,41 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
   }
 
+  override def visitConsList(ctx: ConsListContext): Either[Error, Type] = {
+    ctx.head.accept(copy()) match {
+      case Right(t) =>
+        ctx.tail.accept(copy(vars, Some(ListT(t)))) match {
+          case Right(_) => Right(ListT(t))
+          case err@Left(_) => err
+        }
+      case err@Left(_) => err
+    }
+  }
+
+  override def visitHead(ctx: HeadContext): Either[Error, Type] = {
+    ctx.list.accept(copy(vars, expectedT.map(it => ListT(it)))) match {
+      case Right(ListT(t)) => Right(t)
+      case Right(t) => Left(ERROR_NOT_A_LIST(t, ctx))
+      case err@Left(_) => err
+    }
+  }
+
+  override def visitTail(ctx: TailContext): Either[Error, Type] = {
+    ctx.list.accept(copy(vars, expectedT.map(it => ListT(it)))) match {
+      case Right(ListT(t)) => Right(ListT(t))
+      case Right(t) => Left(ERROR_NOT_A_LIST(t, ctx))
+      case err@Left(_) => err
+    }
+  }
+
+  override def visitIsEmpty(ctx: IsEmptyContext): Either[Error, Type] = {
+    ctx.list.accept(copy(vars, expectedT.map(it => ListT(it)))) match {
+      case Right(ListT(_)) => Right(Bool())
+      case Right(t) => Left(ERROR_NOT_A_LIST(t, ctx))
+      case err@Left(_) => err
+    }
+  }
+
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
 
   private def liftEither[A, B](s: Seq[Either[A, B]]): Either[A, Seq[B]] =

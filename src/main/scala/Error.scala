@@ -197,3 +197,11 @@ final case class ERROR_UNEXPECTED_LIST(t: Type, ctx: ListContext) extends Error(
   |${Error.prettyPrint(ctx)}
   |""".stripMargin
 )
+final case class ERROR_NOT_A_LIST(t: Type, ctx: ExprContext) extends Error(
+  s"""
+  |expected a list type but got
+  |  $t
+  |in the expression at ${Error.pos(ctx)}
+  |${Error.prettyPrint(ctx)}
+  |""".stripMargin
+)
