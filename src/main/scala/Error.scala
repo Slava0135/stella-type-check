@@ -1,6 +1,6 @@
 package io.github.slava0135.stella
 
-import stellaParser.{AbstractionContext, ApplicationContext, DotRecordContext, DotTupleContext, ExprContext, MatchContext, PatternContext, RecordContext, TupleContext, VarContext}
+import stellaParser.{AbstractionContext, ApplicationContext, DotRecordContext, DotTupleContext, ExprContext, ListContext, MatchContext, PatternContext, RecordContext, TupleContext, VarContext}
 
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.misc.Interval
@@ -187,5 +187,13 @@ final case class ERROR_NONEXHAUSTIVE_MATCH_PATTERNS(patterns: Seq[Object], ctx: 
   |${Error.prettyPrint(ctx.expr())}
   |at least the following patterns are not matched:
   |${Error.indentList(patterns)}
+  |""".stripMargin
+)
+final case class ERROR_UNEXPECTED_LIST(t: Type, ctx: ListContext) extends Error(
+  s"""
+  |expected an expression of a non-list type
+  |  $t
+  |but got a list at ${Error.pos(ctx)}
+  |${Error.prettyPrint(ctx)}
   |""".stripMargin
 )

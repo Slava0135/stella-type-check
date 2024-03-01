@@ -30,6 +30,7 @@ object TypeCheck {
         "#type-ascriptions",
         "#let-bindings",
         "#sum-types",
+        "#lists",
       )
 
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
@@ -265,7 +266,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     ctx.expr().accept(this) match {
       case Right(expected) =>
         val actual = ctx.type_.accept(TypeContextVisitor())
-        if (expected == actual) { // TODO: Unknown???
+        if (expected == actual || expected.isInstanceOf[Unknown]) {
           Right(actual)
         } else {
           Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expected, actual))
@@ -334,6 +335,19 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
   }
 
+  override def visitList(ctx: ListContext): Either[Error, Type] = {
+    expectedT match {
+      case Some(ListT(t)) =>
+      case Some(t) =>
+        return Left(ERROR_UNEXPECTED_LIST(t, ctx))
+      case None =>
+        if (ctx.expr().isEmpty) {
+          return Right(Unknown())
+        }
+    }
+    defaultResult()
+  }
+
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
 
   private def liftEither[A, B](s: Seq[Either[A, B]]): Either[A, Seq[B]] =
@@ -343,12 +357,8 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 }
 
 private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
-  override def visitTypeFun(ctx: TypeFunContext): Type = {
-    Fun(ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this))
-  }
-  override def visitTypeParens(ctx: TypeParensContext): Type = {
-    ctx.type_.accept(this)
-  }
+  override def visitTypeFun(ctx: TypeFunContext): Type = Fun(ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this))
+  override def visitTypeParens(ctx: TypeParensContext): Type = ctx.type_.accept(this)
   override def visitTypeTuple(ctx: TypeTupleContext): Type = {
     val types = ctx.types.iterator().asScala.map[Type](it => it.accept(this))
     Tuple(immutable.ArraySeq.from(types))
@@ -360,8 +370,8 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
   override def visitTypeUnit(ctx: TypeUnitContext): Type = UnitT()
   override def visitTypeBool(ctx: TypeBoolContext): Type = Bool()
   override def visitTypeNat(ctx: TypeNatContext): Type = Nat()
-
   override def visitTypeSum(ctx: TypeSumContext): Type = Sum(ctx.left.accept(this), ctx.right.accept(this))
+  override def visitTypeList(ctx: TypeListContext): Type = ListT(ctx.type_.accept(this))
 
   override def defaultResult(): Type = Unknown()
 }

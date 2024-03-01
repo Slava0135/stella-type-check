@@ -69,3 +69,6 @@ final case class Sum(left: Type, right: Type) extends Type {
     res
   }
 }
+final case class ListT(t: Type) extends Type {
+  override def toString: String = s"[$t]"
+}
