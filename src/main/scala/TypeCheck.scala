@@ -308,6 +308,13 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
   }
 
+  override def visitMatch(ctx: MatchContext): Either[Error, Type] = {
+    if (ctx.cases.isEmpty) {
+      return Left(ERROR_ILLEGAL_EMPTY_MATCHING(ctx))
+    }
+    defaultResult()
+  }
+
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
 
   private def liftEither[A, B](s: Seq[Either[A, B]]): Either[A, Seq[B]] =
