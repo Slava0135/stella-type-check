@@ -48,3 +48,6 @@ final case class Record(fields: immutable.ArraySeq[RecordField]) extends Type {
   }
   override def toString: String = s"{${fields.addString(new StringBuilder(), ", ")}}"
 }
+final case class Sum(left: Type, right: Type) extends Type {
+  override def toString: String = s"$left + $right"
+}

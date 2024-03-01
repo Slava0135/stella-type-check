@@ -153,3 +153,11 @@ final case class ERROR_MISSING_RECORD_FIELDS(fields: Seq[String], t: Type, ctx: 
   |  $t
   |""".stripMargin
 )
+final case class ERROR_UNEXPECTED_INJECTION(t: Type, ctx: ExprContext) extends Error(
+  s"""
+     |expected an expression of a non-sum type
+     |  $t
+     |but got an injection into a sum type at ${Error.pos(ctx)}
+     |  $ctx
+     |""".stripMargin
+)

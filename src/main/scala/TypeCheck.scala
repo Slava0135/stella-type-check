@@ -29,6 +29,7 @@ object TypeCheck {
         "#natural-literals",
         "#type-ascriptions",
         "#let-bindings",
+        "#sum-types",
       )
 
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
@@ -285,6 +286,28 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     ctx.expr().accept(this)
   }
 
+  override def visitInl(ctx: InlContext): Either[Error, Type] = {
+    expectedT match {
+      case Some(s@Sum(left, _)) =>
+        ctx.expr().accept(copy(vars, Some(left))) match {
+          case Right(_) => Right(s)
+          case err@Left(_) => err
+        }
+      case Some(t) => Left(ERROR_UNEXPECTED_INJECTION(t, ctx))
+    }
+  }
+
+  override def visitInr(ctx: InrContext): Either[Error, Type] = {
+    expectedT match {
+      case Some(s@Sum(_, right)) =>
+        ctx.expr().accept(copy(vars, Some(right))) match {
+          case Right(_) => Right(s)
+          case err@Left(_) => err
+        }
+      case Some(t) => Left(ERROR_UNEXPECTED_INJECTION(t, ctx))
+    }
+  }
+
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
 
   private def liftEither[A, B](s: Seq[Either[A, B]]): Either[A, Seq[B]] =
@@ -311,6 +334,8 @@ private class TypeContextVisitor extends stellaParserBaseVisitor[Type] {
   override def visitTypeUnit(ctx: TypeUnitContext): Type = UnitT()
   override def visitTypeBool(ctx: TypeBoolContext): Type = Bool()
   override def visitTypeNat(ctx: TypeNatContext): Type = Nat()
+
+  override def visitTypeSum(ctx: TypeSumContext): Type = Sum(ctx.left.accept(this), ctx.right.accept(this))
 
   override def defaultResult(): Type = Unknown()
 }
