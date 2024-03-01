@@ -70,7 +70,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 
   override def visitDeclFun(ctx: DeclFunContext): Either[Error, Type] = {
     val param = ctx.paramDecl(0)
-    val funT = Fun(param.paramType.accept(new TypeContextVisitor()), ctx.returnType.accept(new TypeContextVisitor()))
+    val funT = Fun(param.paramType.accept(TypeContextVisitor()), ctx.returnType.accept(TypeContextVisitor()))
     ctx.returnExpr.accept(copy(vars ++ Seq((param.name.getText, funT.param)), Some(funT.res))) match {
       case err@Left(_) => err
       case Right(returnT) =>
@@ -154,7 +154,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitAbstraction(ctx: AbstractionContext): Either[Error, Type] = {
-    val paramT = ctx.paramDecl.paramType.accept(new TypeContextVisitor)
+    val paramT = ctx.paramDecl.paramType.accept(TypeContextVisitor())
     expectedT match {
       case None =>
         ctx.returnExpr.accept(copy(vars ++ Seq((ctx.paramDecl.name.getText, paramT)), None)) match {
@@ -265,7 +265,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   override def visitTypeAsc(ctx: TypeAscContext): Either[Error, Type] = {
     ctx.expr().accept(this) match {
       case Right(expected) =>
-        val actual = ctx.type_.accept(new TypeContextVisitor)
+        val actual = ctx.type_.accept(TypeContextVisitor())
         if (expected == actual) { // TODO: Unknown???
           Right(actual)
         } else {
@@ -277,7 +277,11 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 
   override def visitLet(ctx: LetContext): Either[Error, Type] = {
     ctx.patternBinding.rhs.accept(copy(vars, None)) match {
-      case Right(t) => ctx.body.accept(copy(vars ++ Seq((ctx.patternBinding.pat.asInstanceOf[PatternVarContext].getText, t))))
+      case Right(t) =>
+        ctx.patternBinding.pat.accept(PatternVisitor(t)) match {
+          case Left(err) => Left(err)
+          case Right(v) => ctx.body.accept(copy(vars ++ v, expectedT))
+        }
       case err@Left(_) => err
     }
   }
@@ -312,6 +316,10 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     if (ctx.cases.isEmpty) {
       return Left(ERROR_ILLEGAL_EMPTY_MATCHING(ctx))
     }
+    val matchT = ctx.expr_.accept(copy(vars, None)) match {
+      case Right(t) => t
+      case err@Left(_) => return err
+    }
     defaultResult()
   }
 
@@ -323,7 +331,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
 }
 
-private class TypeContextVisitor extends stellaParserBaseVisitor[Type] {
+private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
   override def visitTypeFun(ctx: TypeFunContext): Type = {
     Fun(ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this))
   }
@@ -345,4 +353,12 @@ private class TypeContextVisitor extends stellaParserBaseVisitor[Type] {
   override def visitTypeSum(ctx: TypeSumContext): Type = Sum(ctx.left.accept(this), ctx.right.accept(this))
 
   override def defaultResult(): Type = Unknown()
+}
+
+private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Either[Error, immutable.Map[String, Type]]] {
+  override def visitPatternVar(ctx: PatternVarContext): Either[Error, Map[String, Type]] = {
+    Right(immutable.Map.from(Seq((ctx.name.getText, t))))
+  }
+
+  override def defaultResult(): Either[Error, Map[String, Type]] = Right(immutable.Map.empty)
 }
