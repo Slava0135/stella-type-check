@@ -389,7 +389,11 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     expectedT match {
       case Some(v@Variant(_)) =>
         v.tag(ctx.label.getText) match {
-          case Some(t) => copy(vars, Some(t)) check ctx.rhs
+          case Some(t) =>
+            copy(vars, Some(t)) check ctx.rhs match {
+              case Right(_) => Right(v)
+              case err@Left(_) => err
+            }
           case None => Left(ERROR_UNEXPECTED_VARIANT_LABEL(ctx.label.getText, v, ctx))
         }
       case Some(t) => Left(ERROR_UNEXPECTED_VARIANT(t, ctx))
