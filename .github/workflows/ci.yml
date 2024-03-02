@@ -17,3 +17,22 @@ jobs:
           java-version: 17
       - name: Build and Test
         run: sbt -v +test
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+      - name: Setup JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: adopt
+          java-version: 17
+      - name: Build
+        run: sbt assembly
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: target/scala-2.13/stella-type-check-0.1.0.jar
