@@ -1,6 +1,5 @@
 name: CI
 on:
-  pull_request:
   push:
 jobs:
   test:
@@ -17,3 +16,22 @@ jobs:
           java-version: 17
       - name: Build and Test
         run: sbt -v +test
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+      - name: Setup JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: adopt
+          java-version: 17
+      - name: Build
+        run: sbt assembly
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: target/*.jar
