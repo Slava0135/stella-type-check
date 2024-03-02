@@ -511,5 +511,19 @@ private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Eithe
     }
   }
 
+  override def visitPatternInt(ctx: PatternIntContext): Either[Error, MatchedPattern] = {
+    t match {
+      case Nat() => Right(MatchedPattern(Map.empty, ctx))
+      case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
+    }
+  }
+
+  override def visitPatternSucc(ctx: PatternSuccContext): Either[Error, MatchedPattern] = {
+    t match {
+      case Nat() => Right(MatchedPattern(Map.empty, ctx))
+      case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
+    }
+  }
+
   override def defaultResult(): Either[Error, MatchedPattern] = throw new UnsupportedOperationException()
 }

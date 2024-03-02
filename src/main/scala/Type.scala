@@ -1,6 +1,6 @@
 package io.github.slava0135.stella
 
-import stellaParser.{PatternContext, PatternFalseContext, PatternInlContext, PatternInrContext, PatternTrueContext, PatternVarContext, PatternVariantContext}
+import stellaParser.{PatternContext, PatternFalseContext, PatternInlContext, PatternInrContext, PatternIntContext, PatternSuccContext, PatternTrueContext, PatternVarContext, PatternVariantContext}
 
 import scala.collection.immutable
 
@@ -15,6 +15,23 @@ final case class Unknown() extends Type {
 
 final case class Nat() extends Type {
   override def toString: String = "Nat"
+
+  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
+    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
+      return Seq.empty
+    }
+    var res = List.empty[String]
+    val nums = patterns
+      .filter(it => it.isInstanceOf[PatternIntContext])
+      .map(it => it.asInstanceOf[PatternIntContext].n.getText.toInt)
+    if (!nums.contains(0)) {
+      res = res :+ "0"
+    }
+    if (!patterns.exists(p => p.isInstanceOf[PatternSuccContext])) {
+      res = res :+ "succ(_)"
+    }
+    res
+  }
 }
 
 final case class Bool() extends Type {
