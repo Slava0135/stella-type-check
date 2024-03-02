@@ -2,7 +2,7 @@ package io.github.slava0135.stella
 
 import stellaParser.{AbstractionContext, ApplicationContext, DotRecordContext, DotTupleContext, ExprContext, FixContext, ListContext, MatchContext, PatternContext, RecordContext, TupleContext, VarContext}
 
-import org.antlr.v4.runtime.ParserRuleContext
+import org.antlr.v4.runtime.{ParserRuleContext, RuleContext}
 import org.antlr.v4.runtime.misc.Interval
 
 object Error {
@@ -36,7 +36,7 @@ final case class ERROR_MISSING_MAIN() extends Error(
 final case class ERROR_UNDEFINED_VARIABLE(ctx: VarContext) extends Error(
   s"undefined variable ${ctx.name.getText} at ${Error.pos(ctx)}"
 )
-final case class ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx: ExprContext, expected: Type, actual: Type) extends Error(
+final case class ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx: ParserRuleContext, expected: Type, actual: Type) extends Error(
   s"""
   |expected type
   |  $expected
