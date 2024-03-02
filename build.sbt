@@ -1,7 +1,6 @@
 import sbtassembly.AssemblyKeys.{assembly, assemblyJarName}
 
-val v = "0.1.0"
-ThisBuild / version := v
+ThisBuild / version := "0.1.0"
 
 ThisBuild / scalaVersion := "2.13.12"
 
@@ -9,8 +8,8 @@ lazy val root = (project in file("."))
   .settings(
     name := "stella-type-check",
     idePackagePrefix := Some("io.github.slava0135.stella"),
-    assembly / assemblyJarName := s"stella-type-check-$v.jar",
-    assembly / assemblyOutputPath := target.value / "release"
+    assembly / assemblyJarName := s"stella-type-check-${(ThisBuild / version).value}.jar",
+    assembly / assemblyOutputPath := target.value / (assembly / assemblyJarName).value
   )
 
 javacOptions ++= Seq("-source", "17", "-target", "17")
