@@ -54,6 +54,12 @@ final case class Bool() extends Type {
 
 final case class Fun(param: Type, res: Type) extends Type {
   override def toString: String = s"($param -> $res)"
+  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
+    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
+      return Seq.empty
+    }
+    Seq("_")
+  }
 }
 
 final case class UnitT() extends Type {
