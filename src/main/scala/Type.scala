@@ -1,6 +1,6 @@
 package io.github.slava0135.stella
 
-import stellaParser.{PatternContext, PatternInlContext, PatternInrContext, PatternVarContext, PatternVariantContext}
+import stellaParser.{PatternContext, PatternFalseContext, PatternInlContext, PatternInrContext, PatternTrueContext, PatternVarContext, PatternVariantContext}
 
 import scala.collection.immutable
 
@@ -17,6 +17,20 @@ final case class Nat() extends Type {
 }
 final case class Bool() extends Type {
   override def toString: String = "Bool"
+
+  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
+    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
+      return Seq.empty
+    }
+    var res = List.empty[String]
+    if (!patterns.exists(p => p.isInstanceOf[PatternFalseContext])) {
+      res = res :+ "false"
+    }
+    if (!patterns.exists(p => p.isInstanceOf[PatternTrueContext])) {
+      res = res :+ "true"
+    }
+    res
+  }
 }
 final case class Fun(param: Type, res: Type) extends Type {
   override def toString: String = s"($param -> $res)"
