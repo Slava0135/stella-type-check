@@ -12,9 +12,11 @@ final case class Unknown() extends Type {
   override def toString: String = "???"
   override def equals(obj: Any): Boolean = false
 }
+
 final case class Nat() extends Type {
   override def toString: String = "Nat"
 }
+
 final case class Bool() extends Type {
   override def toString: String = "Bool"
 
@@ -32,9 +34,11 @@ final case class Bool() extends Type {
     res
   }
 }
+
 final case class Fun(param: Type, res: Type) extends Type {
   override def toString: String = s"($param -> $res)"
 }
+
 final case class UnitT() extends Type {
   override def toString: String = "Unit"
   override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
@@ -47,6 +51,7 @@ final case class UnitT() extends Type {
     Seq()
   }
 }
+
 final case class Tuple(types: immutable.Seq[Type]) extends Type {
   override def equals(obj: Any): Boolean = {
     obj match {
@@ -58,6 +63,7 @@ final case class Tuple(types: immutable.Seq[Type]) extends Type {
   }
   override def toString: String = s"{${types.addString(new StringBuilder(), ", ")}}"
 }
+
 final case class RecordField(name: String, t: Type) {
   override def toString: String = s"$name : $t"
 }
@@ -75,6 +81,7 @@ final case class Record(fields: immutable.Seq[RecordField]) extends Type {
   }
   override def toString: String = s"{${fields.addString(new StringBuilder(), ", ")}}"
 }
+
 final case class Sum(left: Type, right: Type) extends Type {
   override def toString: String = s"$left + $right"
 
@@ -92,9 +99,11 @@ final case class Sum(left: Type, right: Type) extends Type {
     res
   }
 }
+
 final case class ListT(t: Type) extends Type {
   override def toString: String = s"[$t]"
 }
+
 final case class VariantTag(name: String, t: Type) {
   override def toString: String = s"$name : $t"
 }
