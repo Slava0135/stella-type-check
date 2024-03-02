@@ -9,7 +9,8 @@ lazy val root = (project in file("."))
   .settings(
     name := "stella-type-check",
     idePackagePrefix := Some("io.github.slava0135.stella"),
-    assembly / assemblyJarName := s"stella-type-check-$v.jar"
+    assembly / assemblyJarName := s"stella-type-check-$v.jar",
+    assembly / assemblyOutputPath := target.value / "release"
   )
 
 javacOptions ++= Seq("-source", "17", "-target", "17")
