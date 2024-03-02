@@ -23,6 +23,15 @@ final case class Fun(param: Type, res: Type) extends Type {
 }
 final case class UnitT() extends Type {
   override def toString: String = "Unit"
+  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
+    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
+      return Seq.empty
+    }
+    if (!patterns.exists(p => p.isInstanceOf[PatternInrContext])) {
+      Seq("unit")
+    }
+    Seq()
+  }
 }
 final case class Tuple(types: immutable.Seq[Type]) extends Type {
   override def equals(obj: Any): Boolean = {

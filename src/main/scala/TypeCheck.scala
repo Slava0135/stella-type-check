@@ -32,6 +32,7 @@ object TypeCheck {
       "#lists",
       "#fixpoint-combinator",
       "#variants",
+      "#structural-patterns",
     )
     val listener: stellaParserBaseListener = new stellaParserBaseListener {
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
@@ -449,7 +450,7 @@ private case class MatchedPattern(vars: immutable.Map[String, Type], matched: Pa
 
 private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Either[Error, MatchedPattern]] {
   override def visitPatternVar(ctx: PatternVarContext): Either[Error, MatchedPattern] = {
-    Right(MatchedPattern(immutable.Map.from(Seq((ctx.name.getText, t))), ctx))
+    Right(MatchedPattern(Map.from(Seq((ctx.name.getText, t))), ctx))
   }
 
   override def visitPatternInl(ctx: PatternInlContext): Either[Error, MatchedPattern] = {
@@ -485,6 +486,13 @@ private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Eithe
             }
           case None => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
         }
+      case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
+    }
+  }
+
+  override def visitPatternUnit(ctx: PatternUnitContext): Either[Error, MatchedPattern] = {
+    t match {
+      case UnitT() => Right(MatchedPattern(Map.empty, ctx))
       case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
     }
   }
