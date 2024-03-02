@@ -1,6 +1,6 @@
 package io.github.slava0135.stella
 
-import stellaParser.{PatternContext, PatternFalseContext, PatternInlContext, PatternInrContext, PatternIntContext, PatternSuccContext, PatternTrueContext, PatternVarContext, PatternVariantContext}
+import stellaParser.{PatternContext, PatternFalseContext, PatternInlContext, PatternInrContext, PatternIntContext, PatternSuccContext, PatternTrueContext, PatternTupleContext, PatternVarContext, PatternVariantContext}
 
 import scala.collection.immutable
 
@@ -69,9 +69,9 @@ final case class UnitT() extends Type {
       return Seq.empty
     }
     if (!patterns.exists(p => p.isInstanceOf[PatternInrContext])) {
-      Seq("unit")
+      return Seq("unit")
     }
-    Seq()
+    Seq.empty
   }
 }
 
@@ -85,6 +85,16 @@ final case class Tuple(types: immutable.Seq[Type]) extends Type {
     }
   }
   override def toString: String = s"{${types.addString(new StringBuilder(), ", ")}}"
+
+  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
+    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
+      return Seq.empty
+    }
+    if (!patterns.exists(p => p.isInstanceOf[PatternTupleContext])) {
+      return Seq(s"{${types.map(_ => "_").addString(new StringBuilder, ", ")}}")
+    }
+    Seq.empty
+  }
 }
 
 final case class RecordField(name: String, t: Type) {

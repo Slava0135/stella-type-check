@@ -58,7 +58,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       val func = it.asInstanceOf[DeclFunContext]
       topLevelDecl.put(func.name.getText, Fun(func.paramDecl(0).paramType.accept(new TypeContextVisitor), func.returnType.accept(new TypeContextVisitor)))
     })
-    liftEither(ctx.decl().iterator().asScala.map(it => it.accept(copy(vars ++ topLevelDecl, None))).toSeq) match {
+    EitherLift.liftEither(ctx.decl().iterator().asScala.map(it => it.accept(copy(vars ++ topLevelDecl, None))).toSeq) match {
       case Left(err) => return Left(err)
       case _ =>
     }
@@ -199,7 +199,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         return Left(ERROR_UNEXPECTED_TUPLE(t, ctx))
     }
     val typesOrErr = ctx.exprs.iterator().asScala.map[Either[Error, Type]](it => copy(vars, None) check it).toSeq
-    liftEither(typesOrErr) match {
+    EitherLift.liftEither(typesOrErr) match {
       case Right(types) => Right(Tuple(types))
       case Left(err) => Left(err)
     }
@@ -207,7 +207,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 
   override def visitRecord(ctx: RecordContext): Either[Error, Type] = {
     def getFields = {
-      liftEither(ctx.bindings.iterator().asScala.map[Either[Error, RecordField]] { it =>
+      EitherLift.liftEither(ctx.bindings.iterator().asScala.map[Either[Error, RecordField]] { it =>
         val newExpectedT = expectedT match {
           case Some(r@Record(_)) => r.field(it.name.getText) // TODO: missing field here?
           case None => None
@@ -300,14 +300,14 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case Right(t) => t
       case err@Left(_) => return err
     }
-    liftEither(ctx.cases.iterator().asScala.map(it => it.pattern().accept(PatternVisitor(matchT))).toSeq) match {
+    EitherLift.liftEither(ctx.cases.iterator().asScala.map(it => it.pattern().accept(PatternVisitor(matchT))).toSeq) match {
       case Right(matches) =>
         val unmatched = matchT.unmatchedPatterns(matches.map(it => it.matched))
         if (unmatched.nonEmpty) {
           return Left(ERROR_NONEXHAUSTIVE_MATCH_PATTERNS(unmatched, ctx))
         }
         val matchedVars = matches.map(it => it.vars)
-        liftEither(ctx.cases.iterator().asScala.zip(matchedVars).map { case (c, v) => copy(vars ++ v) check c }.toSeq) match {
+        EitherLift.liftEither(ctx.cases.iterator().asScala.zip(matchedVars).map { case (c, v) => copy(vars ++ v) check c }.toSeq) match {
           case Right(_) => Right(expectedT.get) // TODO: check all types?
           case Left(err) => Left(err)
         }
@@ -325,7 +325,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       } else {
         copy(vars, None) check ctx.expr match {
           case Right(listT) =>
-            liftEither(ctx.expr().iterator().asScala.map(it => copy(vars, Some(listT)) check it).toSeq) match {
+            EitherLift.liftEither(ctx.expr().iterator().asScala.map(it => copy(vars, Some(listT)) check it).toSeq) match {
               case Right(_) => Right(ListT(listT))
               case Left(err) => Left(err)
             }
@@ -400,11 +400,6 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
-
-  private def liftEither[A, B](s: Seq[Either[A, B]]): Either[A, Seq[B]] =
-    s.foldRight(Right(Nil): Either[A, List[B]]) {
-      (e, acc) => for (xs <- acc; x <- e) yield x :: xs
-    }
 
   private def check(ctx: ParserRuleContext): Either[Error, Type] = {
     ctx.accept(this) match {
@@ -521,6 +516,23 @@ private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Eithe
   override def visitPatternSucc(ctx: PatternSuccContext): Either[Error, MatchedPattern] = {
     t match {
       case Nat() => Right(MatchedPattern(Map.empty, ctx))
+      case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
+    }
+  }
+
+  override def visitPatternTuple(ctx: PatternTupleContext): Either[Error, MatchedPattern] = {
+    t match {
+      case t@Tuple(fields) =>
+        if (fields.length != ctx.patterns.size()) {
+          Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
+        } else {
+          EitherLift.liftEither(ctx.patterns.iterator().asScala.zipWithIndex.map {
+            case (p, i) => p.accept(copy(t.types.apply(i)))
+          }.toSeq) match {
+            case Right(mp) => Right(MatchedPattern(Map.from(mp.flatMap(it => it.vars)), ctx))
+            case Left(err) => Left(err)
+          }
+        }
       case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
     }
   }
