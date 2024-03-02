@@ -222,3 +222,21 @@ final case class ERROR_AMBIGUOUS_LIST_TYPE() extends Error(
   |type inference of empty lists is not supported (use type ascriptions)
   |""".stripMargin
 )
+final case class ERROR_UNEXPECTED_VARIANT(t: Type, ctx: ExprContext) extends Error(
+  s"""
+  |expected an expression of a non-variant type
+  |  $t
+  |but got a variant at ${Error.pos(ctx)}
+  |${Error.prettyPrint(ctx)}
+  |""".stripMargin
+)
+final case class ERROR_UNEXPECTED_VARIANT_LABEL(label: String, t: Type, ctx: ExprContext) extends Error(
+  s"""
+  |unexpected label
+  |  $label
+  |for a variant type
+  |  $t
+  |in variant expression at ${Error.pos(ctx)}
+  |${Error.prettyPrint(ctx)}
+  |""".stripMargin
+)
