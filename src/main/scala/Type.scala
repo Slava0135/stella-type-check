@@ -24,7 +24,7 @@ final case class Fun(param: Type, res: Type) extends Type {
 final case class UnitT() extends Type {
   override def toString: String = "Unit"
 }
-final case class Tuple(types: immutable.ArraySeq[Type]) extends Type {
+final case class Tuple(types: immutable.Seq[Type]) extends Type {
   override def equals(obj: Any): Boolean = {
     obj match {
       case other: Tuple =>
@@ -38,7 +38,7 @@ final case class Tuple(types: immutable.ArraySeq[Type]) extends Type {
 final case class RecordField(name: String, t: Type) {
   override def toString: String = s"$name : $t"
 }
-final case class Record(fields: immutable.ArraySeq[RecordField]) extends Type {
+final case class Record(fields: immutable.Seq[RecordField]) extends Type {
   def field(name: String): Option[Type] = {
     fields.filter(f => f.name == name).map(it => it.t).headOption
   }
@@ -71,4 +71,21 @@ final case class Sum(left: Type, right: Type) extends Type {
 }
 final case class ListT(t: Type) extends Type {
   override def toString: String = s"[$t]"
+}
+final case class VariantTag(name: String, t: Type) {
+  override def toString: String = s"$name : $t"
+}
+final case class Variant(tags: immutable.Seq[VariantTag]) extends Type {
+  def tag(name: String): Option[Type] = {
+    tags.filter(f => f.name == name).map(it => it.t).headOption
+  }
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case other: Variant =>
+        tags.length == other.tags.length && tags.indices.forall(i => tags.apply(i) == other.tags.apply(i))
+      case _ =>
+        false
+    }
+  }
+  override def toString: String = s"<| ${tags.addString(new StringBuilder(), ", ")} |>"
 }

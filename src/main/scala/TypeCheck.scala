@@ -32,6 +32,7 @@ object TypeCheck {
         "#sum-types",
         "#lists",
         "#fixpoint-combinator",
+        "#variants",
       )
 
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
@@ -201,7 +202,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
     val typesOrErr = ctx.exprs.iterator().asScala.map[Either[Error, Type]](it => copy(vars, None) check it).toSeq
     liftEither(typesOrErr) match {
-      case Right(types) => Right(Tuple(immutable.ArraySeq.from(types)))
+      case Right(types) => Right(Tuple(types))
       case Left(err) => Left(err)
     }
   }
@@ -223,7 +224,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case None =>
         getFields match {
           case Left(err) => Left(err)
-          case Right(fields) => Right(Record(immutable.ArraySeq.from(fields)))
+          case Right(fields) => Right(Record(fields))
         }
       case Some(r@Record(expectedFields)) =>
         getFields match {
@@ -237,7 +238,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
             if (missingFields.nonEmpty) {
               return Left(ERROR_MISSING_RECORD_FIELDS(missingFields, r, ctx))
             }
-            Right(Record(immutable.ArraySeq.from(fields)))
+            Right(Record(fields))
         }
       case Some(t) => Left(ERROR_UNEXPECTED_RECORD(t, ctx))
     }
@@ -412,17 +413,21 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
   override def visitTypeParens(ctx: TypeParensContext): Type = ctx.type_.accept(this)
   override def visitTypeTuple(ctx: TypeTupleContext): Type = {
     val types = ctx.types.iterator().asScala.map[Type](it => it.accept(this))
-    Tuple(immutable.ArraySeq.from(types))
+    Tuple(types.toSeq)
   }
   override def visitTypeRecord(ctx: TypeRecordContext): Type = {
     val fields = ctx.fieldTypes.iterator().asScala.map[RecordField](it => RecordField(it.label.getText, it.type_.accept(this)))
-    Record(immutable.ArraySeq.from(fields))
+    Record(fields.toSeq)
   }
   override def visitTypeUnit(ctx: TypeUnitContext): Type = UnitT()
   override def visitTypeBool(ctx: TypeBoolContext): Type = Bool()
   override def visitTypeNat(ctx: TypeNatContext): Type = Nat()
   override def visitTypeSum(ctx: TypeSumContext): Type = Sum(ctx.left.accept(this), ctx.right.accept(this))
   override def visitTypeList(ctx: TypeListContext): Type = ListT(ctx.type_.accept(this))
+  override def visitTypeVariant(ctx: TypeVariantContext): Type = {
+    val tags = ctx.fieldTypes.iterator().asScala.map[VariantTag](it => VariantTag(it.label.getText, it.type_.accept(this)))
+    Variant(tags.toSeq)
+  }
 
   override def defaultResult(): Type = Unknown()
 }
