@@ -1,6 +1,6 @@
 package io.github.slava0135.stella
 
-import stellaParser.{PatternContext, PatternFalseContext, PatternInlContext, PatternInrContext, PatternIntContext, PatternSuccContext, PatternTrueContext, PatternTupleContext, PatternVarContext, PatternVariantContext}
+import stellaParser.{PatternContext, PatternFalseContext, PatternInlContext, PatternInrContext, PatternIntContext, PatternSuccContext, PatternTrueContext, PatternTupleContext, PatternUnitContext, PatternVarContext, PatternVariantContext}
 
 import scala.collection.immutable
 
@@ -68,7 +68,7 @@ final case class UnitT() extends Type {
     if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
       return Seq.empty
     }
-    if (!patterns.exists(p => p.isInstanceOf[PatternInrContext])) {
+    if (!patterns.exists(p => p.isInstanceOf[PatternUnitContext])) {
       return Seq("unit")
     }
     Seq.empty
