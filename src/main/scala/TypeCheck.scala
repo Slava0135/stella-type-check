@@ -19,30 +19,27 @@ object TypeCheck {
 
   def unsupportedExtensions(text: String): Set[String] = {
     val tree = getTree(text)
-    val listener = new stellaParserBaseListener {
-      var required = Set.empty[String]
-      private val supported = Set(
-        "#unit-type",
-        "#pairs",
-        "#tuples",
-        "#records",
-        "#natural-literals",
-        "#type-ascriptions",
-        "#let-bindings",
-        "#sum-types",
-        "#lists",
-        "#fixpoint-combinator",
-        "#variants",
-      )
-
+    var required = Set.empty[String]
+    val supported = Set(
+      "#unit-type",
+      "#pairs",
+      "#tuples",
+      "#records",
+      "#natural-literals",
+      "#type-ascriptions",
+      "#let-bindings",
+      "#sum-types",
+      "#lists",
+      "#fixpoint-combinator",
+      "#variants",
+    )
+    val listener: stellaParserBaseListener = new stellaParserBaseListener {
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
         ctx.extensionNames.iterator().asScala.foreach(it => required += it.getText)
       }
-
-      def unsupported(): Set[String] = required -- supported
     }
     ParseTreeWalker.DEFAULT.walk(listener, tree)
-    listener.unsupported()
+    required -- supported
   }
 
   private def getTree(text: String): ProgramContext = {
