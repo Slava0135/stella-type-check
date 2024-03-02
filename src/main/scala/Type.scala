@@ -1,6 +1,6 @@
 package io.github.slava0135.stella
 
-import stellaParser.{PatternContext, PatternInlContext, PatternInrContext, PatternVarContext}
+import stellaParser.{PatternContext, PatternInlContext, PatternInrContext, PatternVarContext, PatternVariantContext}
 
 import scala.collection.immutable
 
@@ -88,4 +88,14 @@ final case class Variant(tags: immutable.Seq[VariantTag]) extends Type {
     }
   }
   override def toString: String = s"<| ${tags.addString(new StringBuilder(), ", ")} |>"
+
+  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
+    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
+      return Seq.empty
+    }
+    val matchedLabels = patterns
+      .filter(it => it.isInstanceOf[PatternVariantContext])
+      .map(it => it.asInstanceOf[PatternVariantContext].label.getText)
+    tags.filterNot(it => matchedLabels.contains(it.name)).map(it => s"<| ${it.name} = _ |>")
+  }
 }
