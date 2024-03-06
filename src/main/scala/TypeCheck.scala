@@ -186,6 +186,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case Some(t) =>Right(t)
         }
       case Right(t) => Left(ERROR_NOT_A_RECORD(t, ctx))
+      case err@Left(_) => err
     }
   }
 
