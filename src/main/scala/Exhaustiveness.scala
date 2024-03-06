@@ -6,7 +6,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 
-class CaseTree(val t: Type) {
+private class CaseTree(val t: Type) {
   val cases: mutable.Map[PatternContext, Option[CaseTree]] = mutable.Map.empty
   def uncovered(): Seq[String] = {
     val patterns = cases.keys
@@ -71,6 +71,8 @@ class CaseTree(val t: Type) {
     }
     res.toSeq
   }
+
+  override def toString: String = s"CaseTree[$t]:\n${cases.toString()}"
 }
 
 object Exhaustiveness {
@@ -89,10 +91,12 @@ object Exhaustiveness {
         (pat, nextT) match {
           case (ctx: PatternVarContext, _) =>
             stop(ctx)
-          case (ctx: PatternInlContext, Sum(nextT, _)) =>
+          case (ctx: PatternInlContext, Sum(t, _)) =>
+            nextT = t
             tree = tree.cases.getOrElseUpdate(ctx, Some(new CaseTree(nextT))).get
             pat = ctx.pattern()
-          case (ctx: PatternInrContext, Sum(_, nextT)) =>
+          case (ctx: PatternInrContext, Sum(_, t)) =>
+            nextT = t
             tree = tree.cases.getOrElseUpdate(ctx, Some(new CaseTree(nextT))).get
             pat = ctx.pattern()
           case (ctx: PatternVariantContext, prevT: Variant) =>
