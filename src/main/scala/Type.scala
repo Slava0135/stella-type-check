@@ -15,64 +15,18 @@ final case class Unknown() extends Type {
 
 final case class Nat() extends Type {
   override def toString: String = "Nat"
-
-  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
-    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
-      return Seq.empty
-    }
-    var res = List.empty[String]
-    val nums = patterns
-      .filter(it => it.isInstanceOf[PatternIntContext])
-      .map(it => it.asInstanceOf[PatternIntContext].n.getText.toInt)
-    if (!nums.contains(0)) {
-      res = res :+ "0"
-    }
-    if (!patterns.exists(p => p.isInstanceOf[PatternSuccContext])) {
-      res = res :+ "succ(_)"
-    }
-    res
-  }
 }
 
 final case class Bool() extends Type {
   override def toString: String = "Bool"
-
-  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
-    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
-      return Seq.empty
-    }
-    var res = List.empty[String]
-    if (!patterns.exists(p => p.isInstanceOf[PatternFalseContext])) {
-      res = res :+ "false"
-    }
-    if (!patterns.exists(p => p.isInstanceOf[PatternTrueContext])) {
-      res = res :+ "true"
-    }
-    res
-  }
 }
 
 final case class Fun(param: Type, res: Type) extends Type {
   override def toString: String = s"($param -> $res)"
-  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
-    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
-      return Seq.empty
-    }
-    Seq("_")
-  }
 }
 
 final case class UnitT() extends Type {
   override def toString: String = "Unit"
-  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
-    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
-      return Seq.empty
-    }
-    if (!patterns.exists(p => p.isInstanceOf[PatternUnitContext])) {
-      return Seq("unit")
-    }
-    Seq.empty
-  }
 }
 
 final case class Tuple(types: immutable.Seq[Type]) extends Type {
@@ -85,16 +39,6 @@ final case class Tuple(types: immutable.Seq[Type]) extends Type {
     }
   }
   override def toString: String = s"{${types.addString(new StringBuilder(), ", ")}}"
-
-  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
-    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
-      return Seq.empty
-    }
-    if (!patterns.exists(p => p.isInstanceOf[PatternTupleContext])) {
-      return Seq(s"{${types.map(_ => "_").addString(new StringBuilder, ", ")}}")
-    }
-    Seq.empty
-  }
 }
 
 final case class RecordField(name: String, t: Type) {
