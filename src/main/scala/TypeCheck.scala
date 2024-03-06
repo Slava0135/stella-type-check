@@ -33,7 +33,7 @@ object TypeCheck {
       "#fixpoint-combinator",
       "#variants",
       "#nested-function-declarations",
-      "#structural-patterns",
+//      "#structural-patterns",
     )
     val listener: stellaParserBaseListener = new stellaParserBaseListener {
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
