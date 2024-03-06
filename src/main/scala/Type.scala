@@ -1,12 +1,8 @@
 package io.github.slava0135.stella
 
-import stellaParser.{PatternContext, PatternFalseContext, PatternInlContext, PatternInrContext, PatternIntContext, PatternSuccContext, PatternTrueContext, PatternTupleContext, PatternUnitContext, PatternVarContext, PatternVariantContext}
-
 import scala.collection.immutable
 
-sealed trait Type {
-  def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = Seq("???")
-}
+sealed trait Type
 
 final case class Unknown() extends Type {
   override def toString: String = "???"
@@ -61,20 +57,6 @@ final case class Record(fields: immutable.Seq[RecordField]) extends Type {
 
 final case class Sum(left: Type, right: Type) extends Type {
   override def toString: String = s"$left + $right"
-
-  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
-    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
-      return Seq.empty
-    }
-    var res = List.empty[String]
-    if (!patterns.exists(p => p.isInstanceOf[PatternInlContext])) {
-      res = res :+ "inl(_)"
-    }
-    if (!patterns.exists(p => p.isInstanceOf[PatternInrContext])) {
-      res = res :+ "inr(_)"
-    }
-    res
-  }
 }
 
 final case class ListT(t: Type) extends Type {
@@ -97,14 +79,4 @@ final case class Variant(tags: immutable.Seq[VariantTag]) extends Type {
     }
   }
   override def toString: String = s"<| ${tags.addString(new StringBuilder(), ", ")} |>"
-
-  override def unmatchedPatterns(patterns: Seq[PatternContext]): Seq[String] = {
-    if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
-      return Seq.empty
-    }
-    val matchedLabels = patterns
-      .filter(it => it.isInstanceOf[PatternVariantContext])
-      .map(it => it.asInstanceOf[PatternVariantContext].label.getText)
-    tags.filterNot(it => matchedLabels.contains(it.name)).map(it => s"<| ${it.name} = _ |>")
-  }
 }
