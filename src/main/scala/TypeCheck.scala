@@ -72,9 +72,9 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   override def visitDeclFun(ctx: DeclFunContext): Either[Error, Type] = {
     val param = ctx.paramDecl(0)
     val funT = Fun(param.paramType.accept(TypeContextVisitor()), ctx.returnType.accept(TypeContextVisitor()))
-    EitherLift.liftEither(ctx.localDecls.iterator().asScala.map(it => copy(vars ++ Seq((param.name.getText, funT.param)), None) check it).toSeq) match {
+    EitherLift.liftEither(ctx.localDecls.iterator().asScala.map(it => copy(vars + (param.name.getText -> funT.param), None) check it).toSeq) match {
       case Right(localDecl) =>
-        val localVars = vars ++ Seq((param.name.getText, funT.param)) ++
+        val localVars = vars + (param.name.getText -> funT.param) ++
           ctx.localDecls.iterator().asScala.map(it => it.asInstanceOf[DeclFunContext].name.getText)
             .zip(localDecl)
         copy(localVars, Some(funT.res)) check ctx.returnExpr match {
@@ -149,12 +149,12 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     val paramT = ctx.paramDecl.paramType.accept(TypeContextVisitor())
     expectedT match {
       case None =>
-        copy(vars ++ Seq((ctx.paramDecl.name.getText, paramT)), None) check ctx.returnExpr match {
+        copy(vars + (ctx.paramDecl.name.getText -> paramT), None) check ctx.returnExpr match {
           case Right(returnT) => Right(Fun(paramT, returnT))
           case err@Left(_) => err
         }
       case Some(Fun(t, r)) if t == paramT =>
-        copy(vars ++ Seq((ctx.paramDecl.name.getText, paramT)), Some(r)) check ctx.returnExpr match {
+        copy(vars + (ctx.paramDecl.name.getText -> paramT), Some(r)) check ctx.returnExpr match {
           case Right(returnT) => Right(Fun(paramT, returnT))
           case err@Left(_) => err
         }
@@ -453,7 +453,7 @@ private case class MatchedPattern(vars: immutable.Map[String, Type], matched: Pa
 
 private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Either[Error, MatchedPattern]] {
   override def visitPatternVar(ctx: PatternVarContext): Either[Error, MatchedPattern] = {
-    Right(MatchedPattern(Map.from(Seq((ctx.name.getText, t))), ctx))
+    Right(MatchedPattern(Map.apply(ctx.name.getText -> t), ctx))
   }
 
   override def visitPatternInl(ctx: PatternInlContext): Either[Error, MatchedPattern] = {
