@@ -13,7 +13,7 @@ class CaseTree(val t: Type) {
     if (patterns.exists(p => p.isInstanceOf[PatternVarContext])) {
       return Seq.empty
     }
-    var res = ListBuffer.empty[String]
+    val res = ListBuffer.empty[String]
     t match {
       case Sum(_, _) =>
         if (!patterns.exists(p => p.isInstanceOf[PatternInlContext])) {
@@ -53,6 +53,21 @@ class CaseTree(val t: Type) {
         if (!patterns.exists(p => p.isInstanceOf[PatternTrueContext])) {
           res += "true"
         }
+      case Nat() =>
+        patterns.find(p => p.isInstanceOf[PatternIntContext]) match {
+          case Some(ctx: PatternIntContext) if ctx.n.getText.toInt == 0 =>
+          case _ => res += "0"
+        }
+        if (!patterns.exists(p => p.isInstanceOf[PatternSuccContext])) {
+          res += "succ(_)"
+        }
+        res addAll cases.flatMap { it =>
+          it match {
+            case (ctx: PatternSuccContext, Some(tree)) =>
+              tree.uncovered().map(it => s"succ($it)")
+            case _ => Seq.empty
+          }
+        }
     }
     res.toSeq
   }
@@ -91,6 +106,11 @@ object Exhaustiveness {
             stop(ctx)
           case (ctx: PatternTrueContext, _: Bool) =>
             stop(ctx)
+          case (ctx: PatternIntContext, _: Nat) =>
+            stop(ctx)
+          case (ctx: PatternSuccContext, _: Nat) =>
+            tree = tree.cases.getOrElseUpdate(ctx, Some(new CaseTree(Nat()))).get
+            pat = ctx.pattern()
         }
       }
     }
