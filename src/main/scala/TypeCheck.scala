@@ -310,13 +310,13 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
     EitherLift.liftEither(ctx.cases.iterator().asScala.map(it => it.pattern().accept(PatternVisitor(matchT))).toSeq) match {
       case Right(caseVars) =>
-        val unmatched = matchT.unmatchedPatterns(ctx.cases.iterator().asScala.map(it => it.pattern()).toSeq)
-        if (unmatched.nonEmpty) {
-          return Left(ERROR_NONEXHAUSTIVE_MATCH_PATTERNS(unmatched, ctx))
-        }
-        EitherLift.liftEither(ctx.cases.iterator().asScala.zip(caseVars).map { case (c, v) => copy(vars ++ v) check c }.toSeq) match {
-          case Right(_) => Right(expectedT.get) // TODO: check all types?
+        Exhaustiveness.check(matchT, ctx) match {
           case Left(err) => Left(err)
+          case _ =>
+            EitherLift.liftEither(ctx.cases.iterator().asScala.zip(caseVars).map { case (c, v) => copy(vars ++ v) check c }.toSeq) match {
+              case Right(_) => Right(expectedT.get) // TODO: check all types?
+              case Left(err) => Left(err)
+            }
         }
       case Left(err) => Left(err)
     }
