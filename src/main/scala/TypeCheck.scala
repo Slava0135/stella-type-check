@@ -33,7 +33,6 @@ object TypeCheck {
       "#fixpoint-combinator",
       "#variants",
       "#nested-function-declarations",
-//      "#structural-patterns",
     )
     val listener: stellaParserBaseListener = new stellaParserBaseListener {
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
@@ -271,7 +270,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case Right(t) =>
         ctx.patternBinding.pat.accept(PatternVisitor(t)) match {
           case Left(err) => Left(err)
-          case Right(m) => copy(vars ++ m.vars, expectedT) check ctx.body
+          case Right(patVars) => copy(vars ++ patVars, expectedT) check ctx.body
         }
       case err@Left(_) => err
     }
@@ -310,13 +309,12 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case err@Left(_) => return err
     }
     EitherLift.liftEither(ctx.cases.iterator().asScala.map(it => it.pattern().accept(PatternVisitor(matchT))).toSeq) match {
-      case Right(matches) =>
-        val unmatched = matchT.unmatchedPatterns(matches.map(it => it.matched))
+      case Right(caseVars) =>
+        val unmatched = matchT.unmatchedPatterns(ctx.cases.iterator().asScala.map(it => it.pattern()).toSeq)
         if (unmatched.nonEmpty) {
           return Left(ERROR_NONEXHAUSTIVE_MATCH_PATTERNS(unmatched, ctx))
         }
-        val matchedVars = matches.map(it => it.vars)
-        EitherLift.liftEither(ctx.cases.iterator().asScala.zip(matchedVars).map { case (c, v) => copy(vars ++ v) check c }.toSeq) match {
+        EitherLift.liftEither(ctx.cases.iterator().asScala.zip(caseVars).map { case (c, v) => copy(vars ++ v) check c }.toSeq) match {
           case Right(_) => Right(expectedT.get) // TODO: check all types?
           case Left(err) => Left(err)
         }
@@ -450,42 +448,40 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
   override def defaultResult(): Type = Unknown()
 }
 
-private case class MatchedPattern(vars: immutable.Map[String, Type], matched: PatternContext)
-
-private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Either[Error, MatchedPattern]] {
-  override def visitPatternVar(ctx: PatternVarContext): Either[Error, MatchedPattern] = {
-    Right(MatchedPattern(Map.apply(ctx.name.getText -> t), ctx))
+private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Either[Error, immutable.Map[String, Type]]] {
+  override def visitPatternVar(ctx: PatternVarContext): Either[Error, immutable.Map[String, Type]] = {
+    Right(Map.apply(ctx.name.getText -> t))
   }
 
-  override def visitPatternInl(ctx: PatternInlContext): Either[Error, MatchedPattern] = {
+  override def visitPatternInl(ctx: PatternInlContext): Either[Error, immutable.Map[String, Type]] = {
     t match {
       case Sum(left, _) =>
         ctx.pattern().accept(copy(left)) match {
-          case Right(m) => Right(m.copy(matched = ctx))
+          case ok@Right(_) => ok
           case err@Left(_) => err
         }
       case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
     }
   }
 
-  override def visitPatternInr(ctx: PatternInrContext): Either[Error, MatchedPattern] = {
+  override def visitPatternInr(ctx: PatternInrContext): Either[Error, immutable.Map[String, Type]] = {
     t match {
       case Sum(_, right) =>
         ctx.pattern().accept(copy(right)) match {
-          case Right(m) => Right(m.copy(matched = ctx))
+          case ok@Right(_) => ok
           case err@Left(_) => err
         }
       case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
     }
   }
 
-  override def visitPatternVariant(ctx: PatternVariantContext): Either[Error, MatchedPattern] = {
+  override def visitPatternVariant(ctx: PatternVariantContext): Either[Error, immutable.Map[String, Type]] = {
     t match {
       case v@Variant(_) =>
         v.tag(ctx.label.getText) match {
           case Some(t) =>
             ctx.pattern().accept(copy(t)) match {
-              case Right(m) => Right(m.copy(matched = ctx))
+              case ok@Right(_) => ok
               case err@Left(_) => err
             }
           case None => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
@@ -494,61 +490,5 @@ private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Eithe
     }
   }
 
-  override def visitPatternUnit(ctx: PatternUnitContext): Either[Error, MatchedPattern] = {
-    t match {
-      case UnitT() => Right(MatchedPattern(Map.empty, ctx))
-      case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
-    }
-  }
-
-  override def visitPatternFalse(ctx: PatternFalseContext): Either[Error, MatchedPattern] = {
-    t match {
-      case Bool() => Right(MatchedPattern(Map.empty, ctx))
-      case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
-    }
-  }
-
-  override def visitPatternTrue(ctx: PatternTrueContext): Either[Error, MatchedPattern] = {
-    t match {
-      case Bool() => Right(MatchedPattern(Map.empty, ctx))
-      case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
-    }
-  }
-
-  override def visitPatternInt(ctx: PatternIntContext): Either[Error, MatchedPattern] = {
-    t match {
-      case Nat() => Right(MatchedPattern(Map.empty, ctx))
-      case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
-    }
-  }
-
-  override def visitPatternSucc(ctx: PatternSuccContext): Either[Error, MatchedPattern] = {
-    t match {
-      case Nat() =>
-        ctx.pattern().accept(this) match {
-          case Right(m) => Right(MatchedPattern(m.vars, ctx))
-          case err@Left(_) => err
-        }
-      case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
-    }
-  }
-
-  override def visitPatternTuple(ctx: PatternTupleContext): Either[Error, MatchedPattern] = {
-    t match {
-      case t@Tuple(fields) =>
-        if (fields.length != ctx.patterns.size()) {
-          Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
-        } else {
-          EitherLift.liftEither(ctx.patterns.iterator().asScala.zipWithIndex.map {
-            case (p, i) => p.accept(copy(t.types.apply(i)))
-          }.toSeq) match {
-            case Right(mp) => Right(MatchedPattern(Map.from(mp.flatMap(it => it.vars)), ctx))
-            case Left(err) => Left(err)
-          }
-        }
-      case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
-    }
-  }
-
-  override def defaultResult(): Either[Error, MatchedPattern] = throw new UnsupportedOperationException()
+  override def defaultResult(): Either[Error, immutable.Map[String, Type]] = throw new UnsupportedOperationException()
 }
