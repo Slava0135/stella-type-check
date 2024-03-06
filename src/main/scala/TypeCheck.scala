@@ -245,9 +245,9 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[Error, Type] = check(ctx.expr_)
 
   override def visitTypeAsc(ctx: TypeAscContext): Either[Error, Type] = {
-    this checkIgnoreType ctx.expr() match {
+    val actual = ctx.type_.accept(TypeContextVisitor())
+    copy(vars, Some(actual)) checkIgnoreType ctx.expr() match {
       case Right(expected) =>
-        val actual = ctx.type_.accept(TypeContextVisitor())
         if (expected == actual || expected.isInstanceOf[Unknown]) {
           Right(actual)
         } else {
