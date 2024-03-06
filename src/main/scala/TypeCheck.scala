@@ -32,6 +32,7 @@ object TypeCheck {
       "#lists",
       "#fixpoint-combinator",
       "#variants",
+      "#nested-function-declarations",
 //      "#structural-patterns",
     )
     val listener: stellaParserBaseListener = new stellaParserBaseListener {
@@ -71,9 +72,16 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   override def visitDeclFun(ctx: DeclFunContext): Either[Error, Type] = {
     val param = ctx.paramDecl(0)
     val funT = Fun(param.paramType.accept(TypeContextVisitor()), ctx.returnType.accept(TypeContextVisitor()))
-    copy(vars ++ Seq((param.name.getText, funT.param)), Some(funT.res)) check ctx.returnExpr match {
-      case err@Left(_) => err
-      case Right(_) => Right(funT)
+    EitherLift.liftEither(ctx.localDecls.iterator().asScala.map(it => copy(vars ++ Seq((param.name.getText, funT.param)), None) check it).toSeq) match {
+      case Right(localDecl) =>
+        val localVars = vars ++ Seq((param.name.getText, funT.param)) ++
+          ctx.localDecls.iterator().asScala.map(it => it.asInstanceOf[DeclFunContext].name.getText)
+            .zip(localDecl)
+        copy(localVars, Some(funT.res)) check ctx.returnExpr match {
+          case err@Left(_) => err
+          case Right(_) => Right(funT)
+        }
+      case Left(err) => Left(err)
     }
   }
 
