@@ -287,6 +287,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case err@Left(_) => err
         }
       case Some(t) => Left(ERROR_UNEXPECTED_INJECTION(t, ctx))
+      case None => Left(ERROR_AMBIGUOUS_SUM_TYPE())
     }
   }
 
@@ -298,6 +299,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case err@Left(_) => err
         }
       case Some(t) => Left(ERROR_UNEXPECTED_INJECTION(t, ctx))
+      case None => Left(ERROR_AMBIGUOUS_SUM_TYPE())
     }
   }
 
@@ -315,7 +317,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case Left(err) => Left(err)
           case _ =>
             EitherLift.liftEither(ctx.cases.iterator().asScala.zip(caseVars).map { case (c, v) => copy(vars ++ v) check c }.toSeq) match {
-              case Right(_) => Right(expectedT.get) // TODO: check all types?
+              case Right(ts) => Right(ts.head) // TODO: check all types?
               case Left(err) => Left(err)
             }
         }

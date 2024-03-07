@@ -240,3 +240,8 @@ final case class ERROR_UNEXPECTED_VARIANT_LABEL(label: String, t: Type, ctx: Exp
   |${Error.prettyPrint(ctx)}
   |""".stripMargin
 )
+final case class ERROR_AMBIGUOUS_SUM_TYPE() extends Error(
+  s"""
+  |type inference for sum types is not supported (use type ascriptions or enable #ambiguous-type-as-bottom)
+  |""".stripMargin
+)
