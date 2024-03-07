@@ -158,7 +158,7 @@ final case class ERROR_UNEXPECTED_INJECTION(t: Type, ctx: ExprContext) extends E
   s"""expected an expression of a non-sum type
      |  $t
      |but got an injection into a sum type at ${Error.pos(ctx)}
-     |  $ctx""".stripMargin
+     |${Error.prettyPrint(ctx)}""".stripMargin
 )
 
 final case class ERROR_ILLEGAL_EMPTY_MATCHING(ctx: MatchContext) extends Error(
