@@ -23,7 +23,7 @@ class TestTypeCheck extends AnyFunSpec {
                 case Ok() =>
                   fail(s"($testName:1) no errors found")
                 case Bad(msg) =>
-                  info(s"running $errorTag/$testName...\n$msg")
+                  info(s"running $errorTag/$testName...\n${msg.lines().iterator().asScala.map(" ".repeat(7) + "|" + _).mkString("\n")}")
                   if (!msg.contains(errorTag)) {
                     val errorPattern = "// *(ERROR_[_A-Z]+)".r
                     val altErrors = text.lines()
