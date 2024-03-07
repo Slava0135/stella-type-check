@@ -389,7 +389,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitIsEmpty(ctx: IsEmptyContext): Either[Error, Type] = {
-    copy(vars, expectedT.map(it => ListT(it))) checkIgnoreType ctx.list match {
+    copy(vars, None) checkIgnoreType ctx.list match {
       case Right(ListT(_)) => Right(Bool())
       case Right(t) => Left(ERROR_NOT_A_LIST(t, ctx))
       case err@Left(_) => err
