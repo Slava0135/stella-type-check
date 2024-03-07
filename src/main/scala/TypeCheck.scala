@@ -317,7 +317,12 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case Left(err) => Left(err)
           case _ =>
             EitherLift.liftEither(ctx.cases.iterator().asScala.zip(caseVars).map { case (c, v) => copy(vars ++ v) check c }.toSeq) match {
-              case Right(ts) => Right(ts.head) // TODO: check all types?
+              case Right(ts) =>
+                val t = ts.head
+                ts.find(_ != t) match {
+                  case Some(otherT) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, t, otherT))
+                  case None => Right(t)
+                }
               case Left(err) => Left(err)
             }
         }
