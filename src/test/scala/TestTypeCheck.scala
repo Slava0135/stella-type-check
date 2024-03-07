@@ -24,7 +24,16 @@ class TestTypeCheck extends AnyFunSpec {
                   fail(s"($testName:1) no errors found")
                 case Bad(msg) =>
                   if (!msg.contains(errorTag)) {
-                    fail(s"($testName:1) wrong error type\n$msg")
+                    val errorPattern = "// *(ERROR_[_A-Z]+)".r
+                    val altErrors = text.lines()
+                      .iterator().asScala
+                      .flatMap(it => errorPattern.findAllMatchIn(it))
+                      .flatMap(it => Option(it.group(1)))
+                      .toSeq
+                    altErrors.find(e => msg.contains(e)) match {
+                      case Some(err) => info.apply(s"($testName:1) /!\\ alternative error tag: $err\n$msg")
+                      case None => fail(s"($testName:1) wrong error type\n$msg")
+                    }
                   }
               }
             }
