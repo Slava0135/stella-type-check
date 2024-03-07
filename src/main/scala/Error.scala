@@ -1,8 +1,8 @@
 package io.github.slava0135.stella
 
-import stellaParser.{AbstractionContext, ApplicationContext, DotRecordContext, DotTupleContext, ExprContext, FixContext, ListContext, MatchContext, PatternContext, RecordContext, TupleContext, VarContext}
+import stellaParser._
 
-import org.antlr.v4.runtime.{ParserRuleContext, RuleContext}
+import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.misc.Interval
 
 object Error {
@@ -22,11 +22,16 @@ object Error {
 }
 
 sealed class Error(why: String) {
-  override def toString: String =
-    s"""An error occurred during typechecking!
-       |Type Error Tag: [${getClass.getSimpleName}]
-       |
+  override def toString: String = {
+    val header = "  An error occurred during typechecking!  "
+    val errorTag = s"  Type Error Tag: [${getClass.getSimpleName}]  "
+    val sep = "%".repeat(math.max(header.length, errorTag.length))
+    s"""$sep
+       |$header
+       |$errorTag
+       |$sep
        |$why""".stripMargin
+  }
 }
 
 final case class ERROR_MISSING_MAIN() extends Error(
