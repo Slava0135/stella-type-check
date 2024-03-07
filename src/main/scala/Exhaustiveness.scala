@@ -31,8 +31,8 @@ private class CaseTree(val t: Type) {
         }
       case Variant(tags) =>
         val matchedLabels = patterns
-          .filter(it => it.isInstanceOf[PatternVariantContext])
-          .map(it => it.asInstanceOf[PatternVariantContext].label.getText)
+          .filter(_.isInstanceOf[PatternVariantContext])
+          .map(_.asInstanceOf[PatternVariantContext].label.getText)
           .toSeq
         res addAll tags.filterNot(it => matchedLabels.contains(it.name)).map(it => s"<| ${it.name} = _ |>")
         res addAll cases.flatMap { it =>
@@ -78,7 +78,7 @@ private class CaseTree(val t: Type) {
 object Exhaustiveness {
   def check(t: Type, ctx: MatchContext): Either[Error, Unit] = {
     val root = new CaseTree(t)
-    ctx.cases.iterator().asScala.map(it => it.pattern()).foreach { it =>
+    ctx.cases.iterator().asScala.map(_.pattern()).foreach { it =>
       var tree = root
       var loop = true
       var nextT = t

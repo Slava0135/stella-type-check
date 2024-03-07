@@ -37,7 +37,7 @@ object TypeCheck {
     )
     val listener: stellaParserBaseListener = new stellaParserBaseListener {
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
-        ctx.extensionNames.iterator().asScala.foreach(it => required += it.getText)
+        ctx.extensionNames.iterator().asScala.foreach(required += _.getText)
       }
     }
     ParseTreeWalker.DEFAULT.walk(listener, tree)
@@ -59,7 +59,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       val func = it.asInstanceOf[DeclFunContext]
       topLevelDecl.put(func.name.getText, Fun(func.paramDecl(0).paramType.accept(new TypeContextVisitor), func.returnType.accept(new TypeContextVisitor)))
     })
-    EitherLift.liftEither(ctx.decl().iterator().asScala.map(it => it.accept(copy(vars ++ topLevelDecl, None))).toSeq) match {
+    EitherLift.liftEither(ctx.decl().iterator().asScala.map(_.accept(copy(vars ++ topLevelDecl, None))).toSeq) match {
       case Left(err) => return Left(err)
       case _ =>
     }
@@ -72,10 +72,10 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   override def visitDeclFun(ctx: DeclFunContext): Either[Error, Type] = {
     val param = ctx.paramDecl(0)
     val funT = Fun(param.paramType.accept(TypeContextVisitor()), ctx.returnType.accept(TypeContextVisitor()))
-    EitherLift.liftEither(ctx.localDecls.iterator().asScala.map(it => copy(vars + (param.name.getText -> funT.param), None) check it).toSeq) match {
+    EitherLift.liftEither(ctx.localDecls.iterator().asScala.map(copy(vars + (param.name.getText -> funT.param), None) check _).toSeq) match {
       case Right(localDecl) =>
         val localVars = vars + (param.name.getText -> funT.param) ++
-          ctx.localDecls.iterator().asScala.map(it => it.asInstanceOf[DeclFunContext].name.getText)
+          ctx.localDecls.iterator().asScala.map(_.asInstanceOf[DeclFunContext].name.getText)
             .zip(localDecl)
         copy(localVars, Some(funT.res)) check ctx.returnExpr match {
           case err@Left(_) => err
@@ -207,7 +207,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case Some(t) =>
         return Left(ERROR_UNEXPECTED_TUPLE(t, ctx))
     }
-    val typesOrErr = ctx.exprs.iterator().asScala.map[Either[Error, Type]](it => copy(vars, None) check it).toSeq
+    val typesOrErr = ctx.exprs.iterator().asScala.map[Either[Error, Type]](copy(vars, None) check _).toSeq
     EitherLift.liftEither(typesOrErr) match {
       case Right(types) => Right(Tuple(types))
       case Left(err) => Left(err)
@@ -237,11 +237,11 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         getFields match {
           case Left(err) => Left(err)
           case Right(fields) =>
-            val unexpectedFields = fields.map(it => it.name).filterNot(it => expectedFields.map(it => it.name).contains(it))
+            val unexpectedFields = fields.map(_.name).filterNot(expectedFields.map(_.name).contains(_))
             if (unexpectedFields.nonEmpty) {
               return Left(ERROR_UNEXPECTED_RECORD_FIELDS(unexpectedFields, r, ctx))
             }
-            val missingFields = expectedFields.map(it => it.name).filterNot(it => fields.map(it => it.name).contains(it))
+            val missingFields = expectedFields.map(_.name).filterNot(fields.map(_.name).contains(_))
             if (missingFields.nonEmpty) {
               return Left(ERROR_MISSING_RECORD_FIELDS(missingFields, r, ctx))
             }
@@ -311,7 +311,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case Right(t) => t
       case err@Left(_) => return err
     }
-    EitherLift.liftEither(ctx.cases.iterator().asScala.map(it => it.pattern().accept(PatternVisitor(matchT))).toSeq) match {
+    EitherLift.liftEither(ctx.cases.iterator().asScala.map(_.pattern().accept(PatternVisitor(matchT))).toSeq) match {
       case Right(caseVars) =>
         Exhaustiveness.check(matchT, ctx) match {
           case Left(err) => Left(err)
@@ -344,7 +344,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       } else {
         copy(vars, t) check ctx.expr match {
           case Right(t) =>
-            EitherLift.liftEither(ctx.expr().iterator().asScala.map(it => copy(vars, Some(t)) check it).toSeq) match {
+            EitherLift.liftEither(ctx.expr().iterator().asScala.map(copy(vars, Some(t)) check _).toSeq) match {
               case Right(_) => Right(ListT(t))
               case Left(err) => Left(err)
             }
@@ -378,7 +378,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitHead(ctx: HeadContext): Either[Error, Type] = {
-    copy(vars, expectedT.map(it => ListT(it))) checkIgnoreType ctx.list match {
+    copy(vars, expectedT.map(ListT)) checkIgnoreType ctx.list match {
       case Right(ListT(t)) => Right(t)
       case Right(t) => Left(ERROR_NOT_A_LIST(t, ctx))
       case err@Left(_) => err
@@ -448,7 +448,7 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
   override def visitTypeFun(ctx: TypeFunContext): Type = Fun(ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this))
   override def visitTypeParens(ctx: TypeParensContext): Type = ctx.type_.accept(this)
   override def visitTypeTuple(ctx: TypeTupleContext): Type = {
-    val types = ctx.types.iterator().asScala.map[Type](it => it.accept(this))
+    val types = ctx.types.iterator().asScala.map[Type](_.accept(this))
     Tuple(types.toSeq)
   }
   override def visitTypeRecord(ctx: TypeRecordContext): Type = {

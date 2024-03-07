@@ -42,7 +42,7 @@ final case class RecordField(name: String, t: Type) {
 }
 final case class Record(fields: immutable.Seq[RecordField]) extends Type {
   def field(name: String): Option[Type] = {
-    fields.filter(f => f.name == name).map(it => it.t).headOption
+    fields.filter(f => f.name == name).map(_.t).headOption
   }
   override def equals(obj: Any): Boolean = {
     obj match {
@@ -68,7 +68,7 @@ final case class VariantTag(name: String, t: Type) {
 }
 final case class Variant(tags: immutable.Seq[VariantTag]) extends Type {
   def tag(name: String): Option[Type] = {
-    tags.filter(f => f.name == name).map(it => it.t).headOption
+    tags.filter(f => f.name == name).map(_.t).headOption
   }
   override def equals(obj: Any): Boolean = {
     obj match {
