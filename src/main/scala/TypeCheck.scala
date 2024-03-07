@@ -245,7 +245,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
             if (missingFields.nonEmpty) {
               return Left(ERROR_MISSING_RECORD_FIELDS(missingFields, r, ctx))
             }
-            Right(Record(fields))
+            Right(r)
         }
       case Some(t) => Left(ERROR_UNEXPECTED_RECORD(t, ctx))
     }
