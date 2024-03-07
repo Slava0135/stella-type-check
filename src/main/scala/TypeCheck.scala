@@ -398,7 +398,8 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 
   override def visitFix(ctx: FixContext): Either[Error, Type] = {
     copy(vars, expectedT.map(it => Fun(it, it))) checkIgnoreType ctx.expr() match {
-      case Right(Fun(_, r)) => Right(r)
+      case Right(Fun(p, r)) if p == r => Right(r)
+      case Right(f@Fun(p, _)) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, Fun(p, p), f))
       case Right(t) => Left(ERROR_NOT_A_FUNCTION(t, Right(ctx)))
       case err@Left(_) => err
     }
