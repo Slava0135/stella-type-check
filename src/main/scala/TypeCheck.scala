@@ -326,17 +326,21 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitList(ctx: ListContext): Either[Error, Type] = {
-    def go(t: Option[Type]) = { // TODO: check expected type?
+    def go(t: Option[Type]) = {
       if (ctx.expr().isEmpty) {
-        ctx.parent match {
-          case _: TypeAscContext => Right(Unknown())
-          case _ => Left(ERROR_AMBIGUOUS_LIST_TYPE())
+        t match {
+          case Some(t) => Right(ListT(t))
+          case None =>
+            ctx.parent match {
+              case _: TypeAscContext => Right(Unknown())
+              case _ => Left(ERROR_AMBIGUOUS_LIST_TYPE())
+            }
         }
       } else {
-        copy(vars, None) check ctx.expr match {
-          case Right(listT) =>
-            EitherLift.liftEither(ctx.expr().iterator().asScala.map(it => copy(vars, Some(listT)) check it).toSeq) match {
-              case Right(_) => Right(ListT(listT))
+        copy(vars, t) check ctx.expr match {
+          case Right(t) =>
+            EitherLift.liftEither(ctx.expr().iterator().asScala.map(it => copy(vars, Some(t)) check it).toSeq) match {
+              case Right(_) => Right(ListT(t))
               case Left(err) => Left(err)
             }
           case err@Left(_) => err
@@ -345,19 +349,26 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
     expectedT match {
       case Some(ListT(t)) => go(Some(t))
-      case Some(t) =>Left(ERROR_UNEXPECTED_LIST(t, ctx))
+      case Some(t) => Left(ERROR_UNEXPECTED_LIST(t, ctx))
       case None => go(None)
     }
   }
 
   override def visitConsList(ctx: ConsListContext): Either[Error, Type] = {
-    this check ctx.head match {
-      case Right(t) =>
-        copy(vars, Some(ListT(t))) check ctx.tail match {
-          case Right(_) => Right(ListT(t))
-          case err@Left(_) => err
-        }
-      case err@Left(_) => err
+    def go(t: Option[Type]): Either[Error, Type] = {
+      copy(vars, t) check ctx.head match {
+        case Right(t) =>
+          copy(vars, Some(ListT(t))) check ctx.tail match {
+            case Right(_) => Right(ListT(t))
+            case err@Left(_) => err
+          }
+        case err@Left(_) => err
+      }
+    }
+    expectedT match {
+      case Some(ListT(t)) => go(Some(t))
+      case Some(t) => Left(ERROR_UNEXPECTED_LIST(t, ctx))
+      case None => go(None)
     }
   }
 

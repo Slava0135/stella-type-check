@@ -201,7 +201,7 @@ final case class ERROR_NONEXHAUSTIVE_MATCH_PATTERNS(patterns: Seq[Object], ctx: 
   |${Error.indentList(patterns)}
   |""".stripMargin
 )
-final case class ERROR_UNEXPECTED_LIST(t: Type, ctx: ListContext) extends Error(
+final case class ERROR_UNEXPECTED_LIST(t: Type, ctx: ExprContext) extends Error(
   s"""
   |expected an expression of a non-list type
   |  $t
