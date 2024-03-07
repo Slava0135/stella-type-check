@@ -56,8 +56,7 @@ final case class ERROR_NOT_A_FUNCTION(t: Type, ctx: Either[ApplicationContext, F
          |in the function call at ${Error.pos(ctx)}
          |${Error.prettyPrint(ctx)}""".stripMargin
     case Right(ctx) =>
-      s"""
-         |expected a one-argument function type but got
+      s"""expected a one-argument function type but got
          |  $t
          |for the expression
          |${Error.prettyPrint(ctx.expr())}
