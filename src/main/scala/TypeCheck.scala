@@ -381,7 +381,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitTail(ctx: TailContext): Either[Error, Type] = {
-    copy(vars, expectedT.map(it => ListT(it))) checkIgnoreType ctx.list match {
+    copy(vars, expectedT) checkIgnoreType ctx.list match {
       case Right(ListT(t)) => Right(ListT(t))
       case Right(t) => Left(ERROR_NOT_A_LIST(t, ctx))
       case err@Left(_) => err
