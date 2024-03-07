@@ -23,6 +23,7 @@ class TestTypeCheck extends AnyFunSpec {
                 case Ok() =>
                   fail(s"($testName:1) no errors found")
                 case Bad(msg) =>
+                  info(s"running $errorTag/$testName...\n$msg")
                   if (!msg.contains(errorTag)) {
                     val errorPattern = "// *(ERROR_[_A-Z]+)".r
                     val altErrors = text.lines()
@@ -31,8 +32,8 @@ class TestTypeCheck extends AnyFunSpec {
                       .flatMap(it => Option(it.group(1)))
                       .toSeq
                     altErrors.find(e => msg.contains(e)) match {
-                      case Some(err) => info.apply(s"($testName:1) /!\\ alternative error tag: $err\n$msg")
-                      case None => fail(s"($testName:1) wrong error type\n$msg")
+                      case Some(err) => info(s"NOTE: using alternative error tag: $err")
+                      case None => fail(s"($testName:1) wrong error type")
                     }
                   }
               }
