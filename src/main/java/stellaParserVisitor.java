@@ -521,26 +521,12 @@ public interface stellaParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitMatchCase(stellaParser.MatchCaseContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code PatternVariant}
+	 * Visit a parse tree produced by the {@code PatternCons}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitPatternVariant(stellaParser.PatternVariantContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code PatternInl}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitPatternInl(stellaParser.PatternInlContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code PatternInr}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitPatternInr(stellaParser.PatternInrContext ctx);
+	T visitPatternCons(stellaParser.PatternConsContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code PatternTuple}
 	 * labeled alternative in {@link stellaParser#pattern}.
@@ -549,13 +535,6 @@ public interface stellaParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitPatternTuple(stellaParser.PatternTupleContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code PatternRecord}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitPatternRecord(stellaParser.PatternRecordContext ctx);
-	/**
 	 * Visit a parse tree produced by the {@code PatternList}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
@@ -563,33 +542,26 @@ public interface stellaParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitPatternList(stellaParser.PatternListContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code PatternCons}
+	 * Visit a parse tree produced by the {@code PatternRecord}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitPatternCons(stellaParser.PatternConsContext ctx);
+	T visitPatternRecord(stellaParser.PatternRecordContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code PatternFalse}
+	 * Visit a parse tree produced by the {@code PatternVariant}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitPatternFalse(stellaParser.PatternFalseContext ctx);
+	T visitPatternVariant(stellaParser.PatternVariantContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code PatternTrue}
+	 * Visit a parse tree produced by the {@code PatternAsc}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitPatternTrue(stellaParser.PatternTrueContext ctx);
-	/**
-	 * Visit a parse tree produced by the {@code PatternUnit}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitPatternUnit(stellaParser.PatternUnitContext ctx);
+	T visitPatternAsc(stellaParser.PatternAscContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code PatternInt}
 	 * labeled alternative in {@link stellaParser#pattern}.
@@ -598,12 +570,26 @@ public interface stellaParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitPatternInt(stellaParser.PatternIntContext ctx);
 	/**
-	 * Visit a parse tree produced by the {@code PatternSucc}
+	 * Visit a parse tree produced by the {@code PatternInr}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitPatternSucc(stellaParser.PatternSuccContext ctx);
+	T visitPatternInr(stellaParser.PatternInrContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code PatternTrue}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPatternTrue(stellaParser.PatternTrueContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code PatternInl}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPatternInl(stellaParser.PatternInlContext ctx);
 	/**
 	 * Visit a parse tree produced by the {@code PatternVar}
 	 * labeled alternative in {@link stellaParser#pattern}.
@@ -618,6 +604,27 @@ public interface stellaParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitParenthesisedPattern(stellaParser.ParenthesisedPatternContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code PatternSucc}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPatternSucc(stellaParser.PatternSuccContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code PatternFalse}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPatternFalse(stellaParser.PatternFalseContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code PatternUnit}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPatternUnit(stellaParser.PatternUnitContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link stellaParser#labelledPattern}.
 	 * @param ctx the parse tree

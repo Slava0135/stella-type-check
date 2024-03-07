@@ -880,41 +880,17 @@ public interface stellaParserListener extends ParseTreeListener {
 	 */
 	void exitMatchCase(stellaParser.MatchCaseContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code PatternVariant}
+	 * Enter a parse tree produced by the {@code PatternCons}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 */
-	void enterPatternVariant(stellaParser.PatternVariantContext ctx);
+	void enterPatternCons(stellaParser.PatternConsContext ctx);
 	/**
-	 * Exit a parse tree produced by the {@code PatternVariant}
+	 * Exit a parse tree produced by the {@code PatternCons}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 */
-	void exitPatternVariant(stellaParser.PatternVariantContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code PatternInl}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 */
-	void enterPatternInl(stellaParser.PatternInlContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code PatternInl}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 */
-	void exitPatternInl(stellaParser.PatternInlContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code PatternInr}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 */
-	void enterPatternInr(stellaParser.PatternInrContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code PatternInr}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 */
-	void exitPatternInr(stellaParser.PatternInrContext ctx);
+	void exitPatternCons(stellaParser.PatternConsContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code PatternTuple}
 	 * labeled alternative in {@link stellaParser#pattern}.
@@ -928,18 +904,6 @@ public interface stellaParserListener extends ParseTreeListener {
 	 */
 	void exitPatternTuple(stellaParser.PatternTupleContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code PatternRecord}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 */
-	void enterPatternRecord(stellaParser.PatternRecordContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code PatternRecord}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 */
-	void exitPatternRecord(stellaParser.PatternRecordContext ctx);
-	/**
 	 * Enter a parse tree produced by the {@code PatternList}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
@@ -952,53 +916,41 @@ public interface stellaParserListener extends ParseTreeListener {
 	 */
 	void exitPatternList(stellaParser.PatternListContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code PatternCons}
+	 * Enter a parse tree produced by the {@code PatternRecord}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 */
-	void enterPatternCons(stellaParser.PatternConsContext ctx);
+	void enterPatternRecord(stellaParser.PatternRecordContext ctx);
 	/**
-	 * Exit a parse tree produced by the {@code PatternCons}
+	 * Exit a parse tree produced by the {@code PatternRecord}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 */
-	void exitPatternCons(stellaParser.PatternConsContext ctx);
+	void exitPatternRecord(stellaParser.PatternRecordContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code PatternFalse}
+	 * Enter a parse tree produced by the {@code PatternVariant}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 */
-	void enterPatternFalse(stellaParser.PatternFalseContext ctx);
+	void enterPatternVariant(stellaParser.PatternVariantContext ctx);
 	/**
-	 * Exit a parse tree produced by the {@code PatternFalse}
+	 * Exit a parse tree produced by the {@code PatternVariant}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 */
-	void exitPatternFalse(stellaParser.PatternFalseContext ctx);
+	void exitPatternVariant(stellaParser.PatternVariantContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code PatternTrue}
+	 * Enter a parse tree produced by the {@code PatternAsc}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 */
-	void enterPatternTrue(stellaParser.PatternTrueContext ctx);
+	void enterPatternAsc(stellaParser.PatternAscContext ctx);
 	/**
-	 * Exit a parse tree produced by the {@code PatternTrue}
+	 * Exit a parse tree produced by the {@code PatternAsc}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 */
-	void exitPatternTrue(stellaParser.PatternTrueContext ctx);
-	/**
-	 * Enter a parse tree produced by the {@code PatternUnit}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 */
-	void enterPatternUnit(stellaParser.PatternUnitContext ctx);
-	/**
-	 * Exit a parse tree produced by the {@code PatternUnit}
-	 * labeled alternative in {@link stellaParser#pattern}.
-	 * @param ctx the parse tree
-	 */
-	void exitPatternUnit(stellaParser.PatternUnitContext ctx);
+	void exitPatternAsc(stellaParser.PatternAscContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code PatternInt}
 	 * labeled alternative in {@link stellaParser#pattern}.
@@ -1012,17 +964,41 @@ public interface stellaParserListener extends ParseTreeListener {
 	 */
 	void exitPatternInt(stellaParser.PatternIntContext ctx);
 	/**
-	 * Enter a parse tree produced by the {@code PatternSucc}
+	 * Enter a parse tree produced by the {@code PatternInr}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 */
-	void enterPatternSucc(stellaParser.PatternSuccContext ctx);
+	void enterPatternInr(stellaParser.PatternInrContext ctx);
 	/**
-	 * Exit a parse tree produced by the {@code PatternSucc}
+	 * Exit a parse tree produced by the {@code PatternInr}
 	 * labeled alternative in {@link stellaParser#pattern}.
 	 * @param ctx the parse tree
 	 */
-	void exitPatternSucc(stellaParser.PatternSuccContext ctx);
+	void exitPatternInr(stellaParser.PatternInrContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code PatternTrue}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 */
+	void enterPatternTrue(stellaParser.PatternTrueContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code PatternTrue}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 */
+	void exitPatternTrue(stellaParser.PatternTrueContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code PatternInl}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 */
+	void enterPatternInl(stellaParser.PatternInlContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code PatternInl}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 */
+	void exitPatternInl(stellaParser.PatternInlContext ctx);
 	/**
 	 * Enter a parse tree produced by the {@code PatternVar}
 	 * labeled alternative in {@link stellaParser#pattern}.
@@ -1047,6 +1023,42 @@ public interface stellaParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitParenthesisedPattern(stellaParser.ParenthesisedPatternContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code PatternSucc}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 */
+	void enterPatternSucc(stellaParser.PatternSuccContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code PatternSucc}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 */
+	void exitPatternSucc(stellaParser.PatternSuccContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code PatternFalse}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 */
+	void enterPatternFalse(stellaParser.PatternFalseContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code PatternFalse}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 */
+	void exitPatternFalse(stellaParser.PatternFalseContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code PatternUnit}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 */
+	void enterPatternUnit(stellaParser.PatternUnitContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code PatternUnit}
+	 * labeled alternative in {@link stellaParser#pattern}.
+	 * @param ctx the parse tree
+	 */
+	void exitPatternUnit(stellaParser.PatternUnitContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link stellaParser#labelledPattern}.
 	 * @param ctx the parse tree

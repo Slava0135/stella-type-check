@@ -99,11 +99,11 @@ expr:
     // expr
     | lhs = expr ':=' rhs = expr # Assign
     | 'if' condition = expr 'then' thenExpr = expr 'else' elseExpr = expr # If
+    | expr1 = expr ';' expr2 = expr # Sequence
     | 'let' patternBindings+=patternBinding (',' patternBindings+=patternBinding)* 'in' body = expr           # Let
     | 'letrec' patternBindings+=patternBinding (',' patternBindings+=patternBinding)* 'in' body = expr           # LetRec
     | 'generic' '[' generics += StellaIdent (',' generics += StellaIdent)* ']' expr_ = expr                           # TypeAbstraction
     | '(' expr_ = expr ')'                                                        # ParenthesisedExpr
-    | expr1 = expr ';' expr2 = expr # Sequence
     | expr_ = expr ';' # TerminatingSemicolon
     ;
 
@@ -131,6 +131,7 @@ pattern:
     | n = INTEGER                                               # PatternInt
     | 'succ' '(' pattern_ = pattern ')'                         # PatternSucc
     | name = StellaIdent                                        # PatternVar
+    | pattern_ = pattern 'as' type_ = stellatype                # PatternAsc
     | '(' pattern_ = pattern ')'                                # ParenthesisedPattern;
 
 labelledPattern: label = StellaIdent '=' pattern_ = pattern;

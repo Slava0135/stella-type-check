@@ -905,37 +905,13 @@ public class stellaParserBaseListener implements stellaParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterPatternVariant(stellaParser.PatternVariantContext ctx) { }
+	@Override public void enterPatternCons(stellaParser.PatternConsContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitPatternVariant(stellaParser.PatternVariantContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterPatternInl(stellaParser.PatternInlContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitPatternInl(stellaParser.PatternInlContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterPatternInr(stellaParser.PatternInrContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitPatternInr(stellaParser.PatternInrContext ctx) { }
+	@Override public void exitPatternCons(stellaParser.PatternConsContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -953,18 +929,6 @@ public class stellaParserBaseListener implements stellaParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterPatternRecord(stellaParser.PatternRecordContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitPatternRecord(stellaParser.PatternRecordContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterPatternList(stellaParser.PatternListContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -977,49 +941,37 @@ public class stellaParserBaseListener implements stellaParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterPatternCons(stellaParser.PatternConsContext ctx) { }
+	@Override public void enterPatternRecord(stellaParser.PatternRecordContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitPatternCons(stellaParser.PatternConsContext ctx) { }
+	@Override public void exitPatternRecord(stellaParser.PatternRecordContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterPatternFalse(stellaParser.PatternFalseContext ctx) { }
+	@Override public void enterPatternVariant(stellaParser.PatternVariantContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitPatternFalse(stellaParser.PatternFalseContext ctx) { }
+	@Override public void exitPatternVariant(stellaParser.PatternVariantContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterPatternTrue(stellaParser.PatternTrueContext ctx) { }
+	@Override public void enterPatternAsc(stellaParser.PatternAscContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitPatternTrue(stellaParser.PatternTrueContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void enterPatternUnit(stellaParser.PatternUnitContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitPatternUnit(stellaParser.PatternUnitContext ctx) { }
+	@Override public void exitPatternAsc(stellaParser.PatternAscContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -1037,13 +989,37 @@ public class stellaParserBaseListener implements stellaParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterPatternSucc(stellaParser.PatternSuccContext ctx) { }
+	@Override public void enterPatternInr(stellaParser.PatternInrContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitPatternSucc(stellaParser.PatternSuccContext ctx) { }
+	@Override public void exitPatternInr(stellaParser.PatternInrContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterPatternTrue(stellaParser.PatternTrueContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPatternTrue(stellaParser.PatternTrueContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterPatternInl(stellaParser.PatternInlContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPatternInl(stellaParser.PatternInlContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -1068,6 +1044,42 @@ public class stellaParserBaseListener implements stellaParserListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitParenthesisedPattern(stellaParser.ParenthesisedPatternContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterPatternSucc(stellaParser.PatternSuccContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPatternSucc(stellaParser.PatternSuccContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterPatternFalse(stellaParser.PatternFalseContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPatternFalse(stellaParser.PatternFalseContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterPatternUnit(stellaParser.PatternUnitContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPatternUnit(stellaParser.PatternUnitContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
