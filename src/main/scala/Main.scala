@@ -20,7 +20,7 @@ object Main {
       sys.exit(1)
     }
     TypeCheck.go(text) match {
-      case Ok() => sys.exit(1)
+      case Ok() => sys.exit(0)
       case Bad(message) =>
         Console.err.println(message)
         sys.exit(1)
