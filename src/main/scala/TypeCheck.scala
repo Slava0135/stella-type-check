@@ -422,7 +422,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case None => Left(ERROR_UNEXPECTED_VARIANT_LABEL(ctx.label.getText, v, ctx))
         }
       case Some(t) => Left(ERROR_UNEXPECTED_VARIANT(t, ctx))
-      case None => Right(Unknown())
+      case None => Left(ERROR_AMBIGUOUS_VARIANT_TYPE())
     }
   }
 
