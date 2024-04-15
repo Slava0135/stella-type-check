@@ -228,3 +228,10 @@ final case class ERROR_AMBIGUOUS_SUM_TYPE() extends Error(
 final case class ERROR_AMBIGUOUS_VARIANT_TYPE() extends Error(
   "type inference for variants is not supported (use type ascriptions or enable #structural-subtyping)"
 )
+
+final case class ERROR_UNEXPECTED_REFERENCE(t: Type, ctx: ExprContext) extends Error(
+  s"""expected an expression of a non-reference type
+     |  $t
+     |but got a new reference at ${Error.pos(ctx)}
+     |${Error.prettyPrint(ctx)}""".stripMargin
+)

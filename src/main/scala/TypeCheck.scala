@@ -34,6 +34,7 @@ object TypeCheck {
       "#variants",
       "#nested-function-declarations",
       "#sequencing",
+      "#references",
     )
     val listener: stellaParserBaseListener = new stellaParserBaseListener {
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
@@ -433,6 +434,20 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
   }
 
+  override def visitRef(ctx: RefContext): Either[Error, Type] = {
+    expectedT match {
+      case None => this check ctx.expr() match {
+        case Right(t) => Right(Ref(t))
+        case err@Left(_) => err
+      }
+      case Some(Ref(t)) => this check ctx.expr() match {
+        case t@Right(_) => t
+        case err@Left(_) => err
+      }
+      case Some(t) => Left(ERROR_UNEXPECTED_REFERENCE(t, ctx))
+    }
+  }
+
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
 
   private def check(ctx: ParserRuleContext): Either[Error, Type] = {
@@ -471,6 +486,7 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
     val tags = ctx.fieldTypes.iterator().asScala.map[VariantTag](it => VariantTag(it.label.getText, it.type_.accept(this)))
     Variant(tags.toSeq)
   }
+  override def visitTypeRef(ctx: TypeRefContext): Type = Ref(ctx.type_.accept(this))
 
   override def defaultResult(): Type = Unknown()
 }

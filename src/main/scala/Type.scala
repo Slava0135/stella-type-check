@@ -80,3 +80,7 @@ final case class Variant(tags: immutable.Seq[VariantTag]) extends Type {
   }
   override def toString: String = s"<| ${tags.addString(new StringBuilder(), ", ")} |>"
 }
+
+final case class Ref(t: Type) extends Type {
+  override def toString: String = s"&$t"
+}
