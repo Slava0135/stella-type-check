@@ -440,11 +440,37 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         case Right(t) => Right(Ref(t))
         case err@Left(_) => err
       }
-      case Some(Ref(t)) => this check ctx.expr() match {
-        case t@Right(_) => t
+      case Some(t@Ref(_)) => this check ctx.expr() match {
+        case Right(_) => Right(t)
         case err@Left(_) => err
       }
       case Some(t) => Left(ERROR_UNEXPECTED_REFERENCE(t, ctx))
+    }
+  }
+
+  override def visitDeref(ctx: DerefContext): Either[Error, Type] = {
+    expectedT match {
+      case None => this check ctx.expr() match {
+        case Right(Ref(t)) => Right(t)
+        case Right(t) => Left(ERROR_NOT_A_REFERENCE(t, Left(ctx)))
+        case err@Left(_) => err
+      }
+      case Some(t) => copy(vars, Some(Ref(t))) check ctx.expr() match {
+        case Right(_) => Right(t)
+        case err@Left(_) => err
+      }
+    }
+  }
+
+  override def visitAssign(ctx: AssignContext): Either[Error, Type] = {
+    copy(vars, None) check ctx.lhs match {
+      case Right(Ref(t)) =>
+        copy(vars, Some(t)) check ctx.rhs match {
+          case Right(_) => Right(UnitT())
+          case err@Left(_) => err
+      }
+      case Right(t) => Left(ERROR_NOT_A_REFERENCE(t, Right(ctx)))
+      case err@Left(_) => err
     }
   }
 

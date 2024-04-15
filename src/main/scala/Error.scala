@@ -235,3 +235,20 @@ final case class ERROR_UNEXPECTED_REFERENCE(t: Type, ctx: ExprContext) extends E
      |but got a new reference at ${Error.pos(ctx)}
      |${Error.prettyPrint(ctx)}""".stripMargin
 )
+
+final case class ERROR_NOT_A_REFERENCE(t: Type, ctx: Either[DerefContext, AssignContext]) extends Error (
+  ctx match {
+    case Left(v) =>
+      s"""cannot dereference an expression ${Error.pos(v.expr())}
+         |${Error.prettyPrint(v.expr())}
+         |of a non-reference type
+         |$t
+         |""".stripMargin
+    case Right(v) =>
+      s"""cannot assign a value to a non-reference
+        |${Error.prettyPrint(v.lhs)}
+        |of a non-reference type
+        |$t
+        |""".stripMargin
+  }
+)
