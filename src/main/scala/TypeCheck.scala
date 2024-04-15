@@ -455,8 +455,9 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         case Right(t) => Left(ERROR_NOT_A_REFERENCE(t, Left(ctx)))
         case err@Left(_) => err
       }
-      case Some(t) => copy(vars, Some(Ref(t))) check ctx.expr() match {
-        case Right(_) => Right(t)
+      case Some(t) => copy(vars, Some(Ref(t))) checkIgnoreType ctx.expr() match {
+        case Right(Ref(t)) => Right(t)
+        case Right(t) => Left(ERROR_NOT_A_REFERENCE(t, Left(ctx)))
         case err@Left(_) => err
       }
     }
