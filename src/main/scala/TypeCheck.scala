@@ -33,7 +33,7 @@ object TypeCheck {
       "#fixpoint-combinator",
       "#variants",
       "#nested-function-declarations",
-//      "#structural-patterns",
+      "#sequencing",
     )
     val listener: stellaParserBaseListener = new stellaParserBaseListener {
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
@@ -423,6 +423,13 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         }
       case Some(t) => Left(ERROR_UNEXPECTED_VARIANT(t, ctx))
       case None => Left(ERROR_AMBIGUOUS_VARIANT_TYPE())
+    }
+  }
+
+  override def visitSequence(ctx: SequenceContext): Either[Error, Type] = {
+    copy(vars, Some(UnitT())) check ctx.expr1 match {
+      case err@Left(_) => err
+      case _ => this check ctx.expr2
     }
   }
 
