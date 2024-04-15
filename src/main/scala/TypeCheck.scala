@@ -440,7 +440,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         case Right(t) => Right(Ref(t))
         case err@Left(_) => err
       }
-      case Some(t@Ref(_)) => this check ctx.expr() match {
+      case Some(t@Ref(tt)) => copy(vars, Some(tt)) check ctx.expr() match {
         case Right(_) => Right(t)
         case err@Left(_) => err
       }
