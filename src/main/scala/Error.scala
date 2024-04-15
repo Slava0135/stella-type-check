@@ -238,7 +238,7 @@ final case class ERROR_UNEXPECTED_REFERENCE(t: Type, ctx: ExprContext) extends E
 
 final case class ERROR_NOT_A_REFERENCE(t: Type, ctx: Either[DerefContext, AssignContext]) extends Error (
   ctx match {
-    case Left(v) =>
+    case Left(v) => // TODO: add test
       s"""cannot dereference an expression ${Error.pos(v.expr())}
          |${Error.prettyPrint(v.expr())}
          |of a non-reference type
@@ -251,4 +251,17 @@ final case class ERROR_NOT_A_REFERENCE(t: Type, ctx: Either[DerefContext, Assign
         |$t
         |""".stripMargin
   }
+)
+
+final case class ERROR_AMBIGUOUS_REFERENCE_TYPE() extends Error(
+  "cannot infer a type of a bare memory address"
+)
+
+// TODO: add test
+final case class ERROR_UNEXPECTED_MEMORY_ADDRESS(t: Type, ctx: ConstMemoryContext) extends Error(
+  s"""expected an expression of a non-reference type
+    |  $t
+    |but got a bare memory address
+    |${Error.prettyPrint(ctx)}
+    |""".stripMargin
 )

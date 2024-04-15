@@ -474,6 +474,14 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
   }
 
+  override def visitConstMemory(ctx: ConstMemoryContext): Either[Error, Type] = {
+    expectedT match {
+      case None => Left(ERROR_AMBIGUOUS_REFERENCE_TYPE())
+      case Some(t@Ref(_)) => Right(t)
+      case Some(t) => Left(ERROR_UNEXPECTED_MEMORY_ADDRESS(t, ctx))
+    }
+  }
+
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
 
   private def check(ctx: ParserRuleContext): Either[Error, Type] = {
