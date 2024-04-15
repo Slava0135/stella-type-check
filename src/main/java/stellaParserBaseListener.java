@@ -353,6 +353,18 @@ public class stellaParserBaseListener implements stellaParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterTryCastAs(stellaParser.TryCastAsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitTryCastAs(stellaParser.TryCastAsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterHead(stellaParser.HeadContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -1085,6 +1097,18 @@ public class stellaParserBaseListener implements stellaParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterPatternCastAs(stellaParser.PatternCastAsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPatternCastAs(stellaParser.PatternCastAsContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterLabelledPattern(stellaParser.LabelledPatternContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -1152,6 +1176,18 @@ public class stellaParserBaseListener implements stellaParserListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitTypeRec(stellaParser.TypeRecContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterTypeAuto(stellaParser.TypeAutoContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitTypeAuto(stellaParser.TypeAutoContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
