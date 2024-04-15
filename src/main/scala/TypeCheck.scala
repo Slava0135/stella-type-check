@@ -35,6 +35,7 @@ object TypeCheck {
       "#nested-function-declarations",
       "#sequencing",
       "#references",
+      "#panic",
     )
     val listener: stellaParserBaseListener = new stellaParserBaseListener {
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
@@ -480,6 +481,13 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case None => Left(ERROR_AMBIGUOUS_REFERENCE_TYPE())
       case Some(t@Ref(_)) => Right(t)
       case Some(t) => Left(ERROR_UNEXPECTED_MEMORY_ADDRESS(t, ctx))
+    }
+  }
+
+  override def visitPanic(ctx: PanicContext): Either[Error, Type] = {
+    expectedT match {
+      case None => Left(ERROR_AMBIGUOUS_PANIC_TYPE())
+      case Some(t) => Right(t)
     }
   }
 

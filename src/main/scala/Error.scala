@@ -265,3 +265,7 @@ final case class ERROR_UNEXPECTED_MEMORY_ADDRESS(t: Type, ctx: ConstMemoryContex
     |${Error.prettyPrint(ctx)}
     |""".stripMargin
 )
+
+final case class ERROR_AMBIGUOUS_PANIC_TYPE() extends Error(
+  "cannot infer type for panic (use type ascriptions or enable #ambiguous-type-as-bottom)"
+)
