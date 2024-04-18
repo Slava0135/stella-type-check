@@ -497,8 +497,8 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitTryWith(ctx: TryWithContext): Either[Error, Type] = {
-    this check ctx.fallbackExpr match {
-      case Right(t) => copy(vars, Some(t)) check ctx.tryExpr
+    this check ctx.tryExpr match {
+      case Right(_) => this check ctx.fallbackExpr
       case err@Left(_) => err
     }
   }
@@ -508,9 +508,28 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case Some(t) =>
         throwT match {
           case None => Left(ERROR_EXCEPTION_TYPE_NOT_DECLARED())
-          case Some(t) => copy(vars, Some(t)) check ctx.expr()
+          case Some(tt) =>
+            copy(vars, Some(tt)) check ctx.expr() match {
+              case Right(_) => Right(t) // TODO: add test with different throw and expected type
+              case err@Left(_) => err
+            }
         }
       case None => Left(ERROR_AMBIGUOUS_THROW_TYPE())
+    }
+  }
+
+  override def visitTryCatch(ctx: TryCatchContext): Either[Error, Type] = {
+    this check ctx.tryExpr match {
+      case Right(_) =>
+        throwT match {
+          case None => Left(ERROR_EXCEPTION_TYPE_NOT_DECLARED())
+          case Some(tt) =>
+            ctx.pat.accept(PatternVisitor(tt)) match {
+              case Right(patVars) => copy(vars ++ patVars, expectedT) check ctx.fallbackExpr
+              case Left(err) => Left(err)
+            }
+        }
+      case err@Left(_) => err
     }
   }
 
