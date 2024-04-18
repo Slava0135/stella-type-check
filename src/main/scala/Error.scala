@@ -238,7 +238,7 @@ final case class ERROR_UNEXPECTED_REFERENCE(t: Type, ctx: ExprContext) extends E
 
 final case class ERROR_NOT_A_REFERENCE(t: Type, ctx: Either[DerefContext, AssignContext]) extends Error (
   ctx match {
-    case Left(v) => // TODO: add test
+    case Left(v) =>
       s"""cannot dereference an expression ${Error.pos(v.expr())}
          |${Error.prettyPrint(v.expr())}
          |of a non-reference type
@@ -257,7 +257,6 @@ final case class ERROR_AMBIGUOUS_REFERENCE_TYPE() extends Error(
   "cannot infer a type of a bare memory address"
 )
 
-// TODO: add test
 final case class ERROR_UNEXPECTED_MEMORY_ADDRESS(t: Type, ctx: ConstMemoryContext) extends Error(
   s"""expected an expression of a non-reference type
     |  $t
@@ -268,4 +267,12 @@ final case class ERROR_UNEXPECTED_MEMORY_ADDRESS(t: Type, ctx: ConstMemoryContex
 
 final case class ERROR_AMBIGUOUS_PANIC_TYPE() extends Error(
   "cannot infer type for panic (use type ascriptions or enable #ambiguous-type-as-bottom)"
+)
+
+final case class ERROR_EXCEPTION_TYPE_NOT_DECLARED() extends Error(
+  "cannot throw exceptions, because exception type is not declared"
+)
+
+final case class ERROR_AMBIGUOUS_THROW_TYPE() extends Error(
+  "cannot infer type for throw (use type ascriptions or enable #ambiguous-type-as-bottom)"
 )

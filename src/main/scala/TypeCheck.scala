@@ -11,7 +11,7 @@ import scala.jdk.CollectionConverters.IteratorHasAsScala
 object TypeCheck {
   def go(text: String): Result = {
     val tree = getTree(text)
-    tree.accept(TypeCheckVisitor(immutable.Map.empty, None)) match {
+    tree.accept(TypeCheckVisitor(immutable.Map.empty, None, None)) match {
       case Left(err) => Bad(err.toString)
       case Right(_) => Ok()
     }
@@ -36,6 +36,8 @@ object TypeCheck {
       "#sequencing",
       "#references",
       "#panic",
+      "#exceptions",
+      "#exception-type-declaration",
     )
     val listener: stellaParserBaseListener = new stellaParserBaseListener {
       override def enterAnExtension(ctx: AnExtensionContext): Unit = {
@@ -53,15 +55,18 @@ object TypeCheck {
   }
 }
 
-private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT: Option[Type]) extends stellaParserBaseVisitor[Either[Error, Type]] {
+private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT: Option[Type], throwT: Option[Type]) extends stellaParserBaseVisitor[Either[Error, Type]] {
 
   override def visitProgram(ctx: ProgramContext): Either[Error, Type] = {
     val topLevelDecl = mutable.Map[String, Type]()
-    ctx.decl().stream().forEach(it => {
-      val func = it.asInstanceOf[DeclFunContext]
-      topLevelDecl.put(func.name.getText, Fun(func.paramDecl(0).paramType.accept(new TypeContextVisitor), func.returnType.accept(new TypeContextVisitor)))
-    })
-    EitherLift.liftEither(ctx.decl().iterator().asScala.map(_.accept(copy(vars ++ topLevelDecl, None))).toSeq) match {
+    var throwT: Option[Type] = None
+    ctx.decl().stream().forEach {
+      case func: DeclFunContext =>
+        topLevelDecl.put(func.name.getText, Fun(func.paramDecl(0).paramType.accept(new TypeContextVisitor), func.returnType.accept(new TypeContextVisitor)))
+      case exceptionTypeDecl: DeclExceptionTypeContext =>
+        throwT = Some(exceptionTypeDecl.exceptionType.accept(TypeContextVisitor()))
+    }
+    EitherLift.liftEither(ctx.decl().iterator().asScala.map(_.accept(copy(vars ++ topLevelDecl, None, throwT))).toSeq) match {
       case Left(err) => return Left(err)
       case _ =>
     }
@@ -488,6 +493,24 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     expectedT match {
       case None => Left(ERROR_AMBIGUOUS_PANIC_TYPE())
       case Some(t) => Right(t)
+    }
+  }
+
+  override def visitTryWith(ctx: TryWithContext): Either[Error, Type] = {
+    this check ctx.fallbackExpr match {
+      case Right(t) => copy(vars, Some(t)) check ctx.tryExpr
+      case err@Left(_) => err
+    }
+  }
+
+  override def visitThrow(ctx: ThrowContext): Either[Error, Type] = {
+    expectedT match {
+      case Some(t) =>
+        throwT match {
+          case None => Left(ERROR_EXCEPTION_TYPE_NOT_DECLARED())
+          case Some(t) => copy(vars, Some(t)) check ctx.expr()
+        }
+      case None => Left(ERROR_AMBIGUOUS_THROW_TYPE())
     }
   }
 
