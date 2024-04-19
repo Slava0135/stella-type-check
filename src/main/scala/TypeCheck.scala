@@ -11,15 +11,25 @@ import scala.jdk.CollectionConverters.IteratorHasAsScala
 object TypeCheck {
   def go(text: String): Result = {
     val tree = getTree(text)
-    tree.accept(TypeCheckVisitor(immutable.Map.empty, None, None)) match {
+    tree.accept(TypeCheckVisitor(immutable.Map.empty, None, None)(subtypingEnabled = enabledExtensions(text).contains("#structural-subtyping"))) match {
       case Left(err) => Bad(err.toString)
       case Right(_) => Ok()
     }
   }
 
-  def unsupportedExtensions(text: String): Set[String] = {
+  private def enabledExtensions(text: String): Set[String] = {
     val tree = getTree(text)
-    var required = Set.empty[String]
+    var enabled = Set.empty[String]
+    val listener: stellaParserBaseListener = new stellaParserBaseListener {
+      override def enterAnExtension(ctx: AnExtensionContext): Unit = {
+        ctx.extensionNames.iterator().asScala.foreach(enabled += _.getText)
+      }
+    }
+    ParseTreeWalker.DEFAULT.walk(listener, tree)
+    enabled
+  }
+
+  def unsupportedExtensions(text: String): Set[String] = {
     val supported = Set(
       "#unit-type",
       "#pairs",
@@ -38,14 +48,12 @@ object TypeCheck {
       "#panic",
       "#exceptions",
       "#exception-type-declaration",
+      "#structural-subtyping",
+      "#top-type",
+      "#bottom-type",
     )
-    val listener: stellaParserBaseListener = new stellaParserBaseListener {
-      override def enterAnExtension(ctx: AnExtensionContext): Unit = {
-        ctx.extensionNames.iterator().asScala.foreach(required += _.getText)
-      }
-    }
-    ParseTreeWalker.DEFAULT.walk(listener, tree)
-    required -- supported
+    val enabled = enabledExtensions(text)
+    enabled -- supported
   }
 
   private def getTree(text: String): ProgramContext = {
@@ -55,7 +63,7 @@ object TypeCheck {
   }
 }
 
-private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT: Option[Type], throwT: Option[Type]) extends stellaParserBaseVisitor[Either[Error, Type]] {
+private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT: Option[Type], throwT: Option[Type])(implicit subtypingEnabled: Boolean) extends stellaParserBaseVisitor[Either[Error, Type]] {
 
   override def visitProgram(ctx: ProgramContext): Either[Error, Type] = {
     val topLevelDecl = mutable.Map[String, Type]()
@@ -93,13 +101,13 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitIf(ctx: IfContext): Either[Error, Type] = {
-    copy(vars, Some(Bool())).check(ctx.condition) match {
+    copy(vars, Some(Bool())) check ctx.condition match {
       case err@Left(_) => return err
       case _ =>
     }
-    check(ctx.thenExpr) match {
+    this check ctx.thenExpr match {
       case Right(thenT) =>
-        copy(vars, Some(thenT)).check(ctx.elseExpr) match {
+        copy(vars, Some(thenT)) check ctx.elseExpr match {
           case Right(elseT) => Right(elseT)
           case err@Left(_) => err
         }
@@ -160,7 +168,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case Right(returnT) => Right(Fun(paramT, returnT))
           case err@Left(_) => err
         }
-      case Some(Fun(t, r)) if t == paramT =>
+      case Some(Fun(t, r)) if t.isSubtypeOf(paramT) =>
         copy(vars + (ctx.paramDecl.name.getText -> paramT), Some(r)) check ctx.returnExpr match {
           case Right(returnT) => Right(Fun(paramT, returnT))
           case err@Left(_) => err
@@ -264,7 +272,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     val actual = ctx.type_.accept(TypeContextVisitor())
     copy(vars, Some(actual)) checkIgnoreType ctx.expr() match {
       case Right(expected) =>
-        if (expected == actual || expected.isInstanceOf[Unknown]) {
+        if (actual.isSubtypeOf(expected)) {
           Right(actual)
         } else {
           Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expected, actual))
@@ -360,6 +368,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       }
     }
     expectedT match {
+      case Some(Top()) if subtypingEnabled => go(None)
       case Some(ListT(t)) => go(Some(t))
       case Some(t) => Left(ERROR_UNEXPECTED_LIST(t, ctx))
       case None => go(None)
@@ -378,6 +387,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       }
     }
     expectedT match {
+      case Some(Top()) if subtypingEnabled => go(None)
       case Some(ListT(t)) => go(Some(t))
       case Some(t) => Left(ERROR_UNEXPECTED_LIST(t, ctx))
       case None => go(None)
@@ -448,6 +458,10 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       }
       case Some(t@Ref(tt)) => copy(vars, Some(tt)) check ctx.expr() match {
         case Right(_) => Right(t)
+        case err@Left(_) => err
+      }
+      case Some(Top()) if subtypingEnabled => copy(vars, Some(Top())) check ctx.expr() match {
+        case Right(t) => Right(t)
         case err@Left(_) => err
       }
       case Some(t) => Left(ERROR_UNEXPECTED_REFERENCE(t, ctx))
@@ -536,10 +550,11 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
 
   private def check(ctx: ParserRuleContext): Either[Error, Type] = {
-    ctx.accept(this) match {
-      case Right(t) if expectedT.isEmpty || expectedT.contains(t) => Right(t)
-      case Right(t) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expectedT.get, t))
-      case err@Left(_) => err
+    (ctx.accept(this), expectedT) match {
+      case (Right(t), None) => Right(t)
+      case (Right(t), Some(expectedT)) if t.isSubtypeOf(expectedT) => Right(t)
+      case (Right(t), Some(expectedT)) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expectedT, t))
+      case (err@Left(_), _) => err
     }
   }
 
@@ -572,6 +587,8 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
     Variant(tags.toSeq)
   }
   override def visitTypeRef(ctx: TypeRefContext): Type = Ref(ctx.type_.accept(this))
+  override def visitTypeTop(ctx: TypeTopContext): Type = Top()
+  override def visitTypeBottom(ctx: TypeBottomContext): Type = Bot()
 
   override def defaultResult(): Type = Unknown()
 }
