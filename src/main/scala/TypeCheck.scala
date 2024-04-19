@@ -578,6 +578,23 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         if (missingFields.nonEmpty) {
           return ERROR_MISSING_RECORD_FIELDS(missingFields, expectedT, ctx)
         }
+      case (expectedT@Variant(expectedTags), actualT@Variant(actualTags)) =>
+        if (!actualTags.forall { actualTag =>
+          expectedT.tag(actualTag.name) match {
+            case Some(expectedTag) => actualTag.t.isSubtypeOf(expectedTag)
+            case None => true
+          }
+        }) {
+          if (!subtypingEnabled) {
+            return ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expectedT, actualT)
+          } else {
+            return ERROR_UNEXPECTED_SUBTYPE(ctx, expectedT, actualT)
+          }
+        }
+        val unexpected = actualTags.filterNot(expectedTags.contains(_))
+        if (unexpected.nonEmpty) {
+          return ERROR_UNEXPECTED_VARIANT_LABEL(unexpected.head.name, expectedT, ctx)
+        }
       case _ =>
     }
     if (!subtypingEnabled) {

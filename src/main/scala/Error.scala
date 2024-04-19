@@ -212,7 +212,7 @@ final case class ERROR_UNEXPECTED_VARIANT(t: Type, ctx: ExprContext) extends Err
      |${Error.prettyPrint(ctx)}""".stripMargin
 )
 
-final case class ERROR_UNEXPECTED_VARIANT_LABEL(label: String, t: Type, ctx: ExprContext) extends Error(
+final case class ERROR_UNEXPECTED_VARIANT_LABEL(label: String, t: Type, ctx: ParserRuleContext) extends Error(
   s"""unexpected label
      |  $label
      |for a variant type
