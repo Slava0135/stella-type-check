@@ -11,7 +11,14 @@ import scala.jdk.CollectionConverters.IteratorHasAsScala
 object TypeCheck {
   def go(text: String): Result = {
     val tree = getTree(text)
-    tree.accept(TypeCheckVisitor(immutable.Map.empty, None, None)(subtypingEnabled = enabledExtensions(text).contains("#structural-subtyping"))) match {
+    val enabled = enabledExtensions(text)
+    val tc = TypeCheckVisitor(
+      immutable.Map.empty,
+      None,
+      None,
+      ambiguousTypeAsBottom = enabled.contains("#ambiguous-type-as-bottom")
+    )(subtypingEnabled = enabled.contains("#structural-subtyping"))
+    tree.accept(tc) match {
       case Left(err) => Bad(err.toString)
       case Right(_) => Ok()
     }
@@ -51,6 +58,7 @@ object TypeCheck {
       "#structural-subtyping",
       "#top-type",
       "#bottom-type",
+      "#ambiguous-type-as-bottom",
     )
     val enabled = enabledExtensions(text)
     enabled -- supported
@@ -63,7 +71,9 @@ object TypeCheck {
   }
 }
 
-private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT: Option[Type], throwT: Option[Type])(implicit subtypingEnabled: Boolean) extends stellaParserBaseVisitor[Either[Error, Type]] {
+private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT: Option[Type], throwT: Option[Type], ambiguousTypeAsBottom: Boolean)
+                                   (implicit subtypingEnabled: Boolean)
+  extends stellaParserBaseVisitor[Either[Error, Type]] {
 
   override def visitProgram(ctx: ProgramContext): Either[Error, Type] = {
     val topLevelDecl = mutable.Map[String, Type]()
@@ -306,6 +316,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case err@Left(_) => err
         }
       case Some(t) => Left(ERROR_UNEXPECTED_INJECTION(t, ctx))
+      case None if ambiguousTypeAsBottom => Right(Bot())
       case None => Left(ERROR_AMBIGUOUS_SUM_TYPE())
     }
   }
@@ -318,6 +329,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case err@Left(_) => err
         }
       case Some(t) => Left(ERROR_UNEXPECTED_INJECTION(t, ctx))
+      case None if ambiguousTypeAsBottom => Right(Bot())
       case None => Left(ERROR_AMBIGUOUS_SUM_TYPE())
     }
   }
@@ -357,6 +369,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case None =>
             ctx.parent match {
               case _: TypeAscContext => Right(Unknown())
+              case _ if ambiguousTypeAsBottom => Right(Bot())
               case _ => Left(ERROR_AMBIGUOUS_LIST_TYPE())
             }
         }
@@ -443,6 +456,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case None => Left(ERROR_UNEXPECTED_VARIANT_LABEL(ctx.label.getText, v, ctx))
         }
       case Some(t) => Left(ERROR_UNEXPECTED_VARIANT(t, ctx))
+      case None if ambiguousTypeAsBottom => Right(Bot())
       case None => Left(ERROR_AMBIGUOUS_VARIANT_TYPE())
     }
   }
@@ -501,6 +515,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 
   override def visitConstMemory(ctx: ConstMemoryContext): Either[Error, Type] = {
     expectedT match {
+      case None if ambiguousTypeAsBottom => Right(Bot())
       case None => Left(ERROR_AMBIGUOUS_REFERENCE_TYPE())
       case Some(t@Ref(_)) => Right(t)
       case Some(t) => Left(ERROR_UNEXPECTED_MEMORY_ADDRESS(t, ctx))
@@ -509,6 +524,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 
   override def visitPanic(ctx: PanicContext): Either[Error, Type] = {
     expectedT match {
+      case None if ambiguousTypeAsBottom => Right(Bot())
       case None => Left(ERROR_AMBIGUOUS_PANIC_TYPE())
       case Some(t) => Right(t)
     }
@@ -532,6 +548,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
               case err@Left(_) => err
             }
         }
+      case None if ambiguousTypeAsBottom => Right(Bot())
       case None => Left(ERROR_AMBIGUOUS_THROW_TYPE())
     }
   }
