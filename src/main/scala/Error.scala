@@ -122,7 +122,7 @@ final case class ERROR_NOT_A_RECORD(t: Type, ctx: DotRecordContext) extends Erro
      |${Error.prettyPrint(ctx)}""".stripMargin
 )
 
-final case class ERROR_UNEXPECTED_TUPLE_LENGTH(expected: Int, actual: Int, t: Type, ctx: TupleContext) extends Error(
+final case class ERROR_UNEXPECTED_TUPLE_LENGTH(expected: Int, actual: Int, t: Type, ctx: ParserRuleContext) extends Error(
   s"""expected $expected components
      |for a tuple of type
      |  $t

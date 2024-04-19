@@ -275,7 +275,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         if (actual.isSubtypeOf(expected)) {
           Right(actual)
         } else {
-          Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expected, actual))
+          Left(unexpectedType(ctx, expected, actual))
         }
       case err@Left(_) => err
     }
@@ -335,7 +335,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
               case Right(ts) =>
                 val t = ts.head
                 ts.find(_ != t) match {
-                  case Some(otherT) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, t, otherT))
+                  case Some(otherT) => Left(unexpectedType(ctx, t, otherT))
                   case None => Right(t)
                 }
               case Left(err) => Left(err)
@@ -421,7 +421,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   override def visitFix(ctx: FixContext): Either[Error, Type] = {
     copy(vars, expectedT.map(it => Fun(it, it))) checkIgnoreType ctx.expr() match {
       case Right(Fun(p, r)) if p == r => Right(r)
-      case Right(f@Fun(p, _)) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, Fun(p, p), f))
+      case Right(f@Fun(p, _)) => Left(unexpectedType(ctx, Fun(p, p), f))
       case Right(t) => Left(ERROR_NOT_A_FUNCTION(t, Right(ctx)))
       case err@Left(_) => err
     }
@@ -547,13 +547,28 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
   }
 
+  private def unexpectedType(ctx: ParserRuleContext, expectedT: Type, actualT: Type): Error = {
+    (expectedT, actualT) match {
+      case (expectedT@Tuple(exp), Tuple(act)) =>
+        if (exp.length != act.length) {
+          return ERROR_UNEXPECTED_TUPLE_LENGTH(exp.length, act.length, expectedT, ctx)
+        }
+      case _ =>
+    }
+    if (!subtypingEnabled) {
+      ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expectedT, actualT)
+    } else {
+      ERROR_UNEXPECTED_SUBTYPE(ctx, expectedT, actualT)
+    }
+  }
+
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
 
   private def check(ctx: ParserRuleContext): Either[Error, Type] = {
     (ctx.accept(this), expectedT) match {
       case (Right(t), None) => Right(t)
       case (Right(t), Some(expectedT)) if t.isSubtypeOf(expectedT) => Right(t)
-      case (Right(t), Some(expectedT)) => Left(if (!subtypingEnabled) ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expectedT, t) else ERROR_UNEXPECTED_SUBTYPE(ctx, expectedT, t))
+      case (Right(t), Some(expectedT)) => Left(unexpectedType(ctx, expectedT, t))
       case (err@Left(_), _) => err
     }
   }
