@@ -59,6 +59,7 @@ object TypeCheck {
       "#top-type",
       "#bottom-type",
       "#ambiguous-type-as-bottom",
+      "#type-cast",
     )
     val enabled = enabledExtensions(text)
     enabled -- supported
@@ -566,6 +567,10 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         }
       case err@Left(_) => err
     }
+  }
+
+  override def visitTypeCast(ctx: TypeCastContext): Either[Error, Type] = {
+    Right(ctx.type_.accept(TypeContextVisitor()))
   }
 
   private def unexpectedType(ctx: ParserRuleContext, expectedT: Type, actualT: Type): Error = {
