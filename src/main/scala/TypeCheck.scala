@@ -570,7 +570,10 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitTypeCast(ctx: TypeCastContext): Either[Error, Type] = {
-    Right(ctx.type_.accept(TypeContextVisitor()))
+    copy(vars, None) check ctx.expr() match {
+      case Right(_) => Right(ctx.type_.accept(TypeContextVisitor()))
+      case err@Left(_) => err
+    }
   }
 
   private def unexpectedType(ctx: ParserRuleContext, expectedT: Type, actualT: Type): Error = {
