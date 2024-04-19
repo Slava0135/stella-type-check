@@ -173,7 +173,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case Right(returnT) => Right(Fun(paramT, returnT))
           case err@Left(_) => err
         }
-      case Some(Fun(t, _)) => Left(ERROR_UNEXPECTED_TYPE_FOR_PARAMETER(t, paramT, ctx))
+      case Some(Fun(t, _)) => Left(if (!subtypingEnabled) ERROR_UNEXPECTED_TYPE_FOR_PARAMETER(t, paramT, ctx) else ERROR_UNEXPECTED_SUBTYPE(ctx, t, paramT))
       case Some(t) => Left(ERROR_UNEXPECTED_LAMBDA(t, ctx))
     }
   }
@@ -553,7 +553,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     (ctx.accept(this), expectedT) match {
       case (Right(t), None) => Right(t)
       case (Right(t), Some(expectedT)) if t.isSubtypeOf(expectedT) => Right(t)
-      case (Right(t), Some(expectedT)) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expectedT, t))
+      case (Right(t), Some(expectedT)) => Left(if (!subtypingEnabled) ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expectedT, t) else ERROR_UNEXPECTED_SUBTYPE(ctx, expectedT, t))
       case (err@Left(_), _) => err
     }
   }

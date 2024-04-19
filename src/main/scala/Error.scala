@@ -276,3 +276,12 @@ final case class ERROR_EXCEPTION_TYPE_NOT_DECLARED() extends Error(
 final case class ERROR_AMBIGUOUS_THROW_TYPE() extends Error(
   "cannot infer type for throw (use type ascriptions or enable #ambiguous-type-as-bottom)"
 )
+
+final case class ERROR_UNEXPECTED_SUBTYPE(ctx: ParserRuleContext, expected: Type, actual: Type) extends Error(
+  s"""expected subtype
+     |  $expected
+     |but got
+     |  $actual
+     |for expression at ${Error.pos(ctx)}
+     |${Error.prettyPrint(ctx)}""".stripMargin
+)
