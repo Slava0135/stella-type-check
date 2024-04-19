@@ -145,14 +145,14 @@ final case class ERROR_UNEXPECTED_RECORD(t: Type, ctx: RecordContext) extends Er
      |${Error.prettyPrint(ctx)}""".stripMargin
 )
 
-final case class ERROR_UNEXPECTED_RECORD_FIELDS(fields: Seq[String], t: Type, ctx: RecordContext) extends Error(
+final case class ERROR_UNEXPECTED_RECORD_FIELDS(fields: Seq[String], t: Type, ctx: ParserRuleContext) extends Error(
   s"""unexpected fields
      |  ${fields.addString(new StringBuilder(), ", ")}
      |for an expected record of type at ${Error.pos(ctx)}
      |  $t""".stripMargin
 )
 
-final case class ERROR_MISSING_RECORD_FIELDS(fields: Seq[String], t: Type, ctx: RecordContext) extends Error(
+final case class ERROR_MISSING_RECORD_FIELDS(fields: Seq[String], t: Type, ctx: ParserRuleContext) extends Error(
   s"""missing fields
      |  ${fields.addString(new StringBuilder(), ", ")}
      |for an expected record of type at ${Error.pos(ctx)}

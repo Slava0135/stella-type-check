@@ -252,15 +252,19 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         getFields match {
           case Left(err) => Left(err)
           case Right(fields) =>
-            val unexpectedFields = fields.map(_.name).filterNot(expectedFields.map(_.name).contains(_))
-            if (unexpectedFields.nonEmpty) {
-              return Left(ERROR_UNEXPECTED_RECORD_FIELDS(unexpectedFields, r, ctx))
+            if (subtypingEnabled) {
+              Right(Record(fields))
+            } else {
+              val unexpectedFields = fields.map(_.name).filterNot(expectedFields.map(_.name).contains(_))
+              if (unexpectedFields.nonEmpty) {
+                return Left(ERROR_UNEXPECTED_RECORD_FIELDS(unexpectedFields, r, ctx))
+              }
+              val missingFields = expectedFields.map(_.name).filterNot(fields.map(_.name).contains(_))
+              if (missingFields.nonEmpty) {
+                return Left(ERROR_MISSING_RECORD_FIELDS(missingFields, r, ctx))
+              }
+              Right(r)
             }
-            val missingFields = expectedFields.map(_.name).filterNot(fields.map(_.name).contains(_))
-            if (missingFields.nonEmpty) {
-              return Left(ERROR_MISSING_RECORD_FIELDS(missingFields, r, ctx))
-            }
-            Right(r)
         }
       case Some(t) => Left(ERROR_UNEXPECTED_RECORD(t, ctx))
     }
@@ -552,6 +556,27 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case (expectedT@Tuple(exp), Tuple(act)) =>
         if (exp.length != act.length) {
           return ERROR_UNEXPECTED_TUPLE_LENGTH(exp.length, act.length, expectedT, ctx)
+        }
+      case (expectedT@Record(expectedFields), Record(fields)) => // TODO: this is awful
+        if (!fields.forall { f =>
+          expectedFields.find(_.name == f.name) match {
+            case Some(expectedF) => f.t.isSubtypeOf(expectedF.t)
+            case None => true
+          }})
+        {
+          if (!subtypingEnabled) {
+            return ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expectedT, actualT)
+          } else {
+            return ERROR_UNEXPECTED_SUBTYPE(ctx, expectedT, actualT)
+          }
+        }
+        val unexpectedFields = fields.map(_.name).filterNot(expectedFields.map(_.name).contains(_))
+        if (unexpectedFields.nonEmpty && subtypingEnabled) {
+          return ERROR_UNEXPECTED_RECORD_FIELDS(unexpectedFields, expectedT, ctx)
+        }
+        val missingFields = expectedFields.map(_.name).filterNot(fields.map(_.name).contains(_))
+        if (missingFields.nonEmpty) {
+          return ERROR_MISSING_RECORD_FIELDS(missingFields, expectedT, ctx)
         }
       case _ =>
     }
