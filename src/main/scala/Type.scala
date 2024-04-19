@@ -72,7 +72,7 @@ final case class Tuple(types: immutable.Seq[Type]) extends Type {
   override def isSubtypeOf(other: Type)(implicit subtypingEnabled: Boolean): Boolean = {
     if (!subtypingEnabled) return this == other
     other match {
-      case Tuple(otherTypes) => otherTypes.length <= types.length && otherTypes.indices.forall { i => types(i).isSubtypeOf(otherTypes(i)) }
+      case Tuple(otherTypes) => otherTypes.length == types.length && otherTypes.indices.forall { i => types(i).isSubtypeOf(otherTypes(i)) }
       case Top() => true
       case _ => false
     }
