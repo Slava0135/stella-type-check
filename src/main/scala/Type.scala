@@ -4,6 +4,27 @@ import scala.collection.immutable
 
 sealed trait Type
 
+final case class FreshTypeVar() extends Type {
+  private val id: Int = FreshTypeVar.nextId()
+  override def toString: String = s"?T$id"
+  override def equals(obj: Any): Boolean = {
+    obj match {
+      case v: FreshTypeVar => v.id == id
+      case _ => false
+    }
+  }
+  override def hashCode(): Int = id
+}
+
+private object FreshTypeVar {
+  private var id = 1
+  private def nextId(): Int = {
+    val temp = id
+    id += 1
+    temp
+  }
+}
+
 final case class Nat() extends Type {
   override def toString: String = "Nat"
 }

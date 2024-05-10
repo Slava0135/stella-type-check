@@ -3,7 +3,7 @@ package io.github.slava0135.stella
 import stellaParser._
 
 import org.antlr.v4.runtime.tree.ParseTreeWalker
-import org.antlr.v4.runtime.{CharStreams, CommonTokenStream, ParserRuleContext}
+import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 
 import scala.collection.{immutable, mutable}
 import scala.jdk.CollectionConverters.IteratorHasAsScala
@@ -11,7 +11,7 @@ import scala.jdk.CollectionConverters.IteratorHasAsScala
 object TypeCheck {
   def go(text: String): Result = {
     val tree = getTree(text)
-    tree.accept(TypeCheckVisitor(immutable.Map.empty)) match {
+    tree.accept(TypeCheckVisitor(mutable.Set.empty, immutable.Map.empty)) match {
       case Left(err) => Bad(err.toString)
       case Right(_) => Ok()
     }
@@ -23,7 +23,7 @@ object TypeCheck {
     val supported = Set(
 //      "#unit-type",
 //      "#pairs",
-//      "#natural-literals",
+      "#natural-literals",
 //      "#type-ascriptions",
 //      "#let-bindings",
 //      "#sum-types",
@@ -52,8 +52,109 @@ object TypeCheck {
   }
 }
 
-private case class TypeCheckVisitor(vars: immutable.Map[String, Type]) extends stellaParserBaseVisitor[Either[Error, Type]] {
+private case class Constraint(left: Type, right: Type)
 
+private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.Map[String, Type]) extends stellaParserBaseVisitor[Either[Error, Type]] {
+
+  override def visitProgram(ctx: ProgramContext): Either[Error, Type] = {
+    val topLevelDecl = mutable.Map[String, Type]()
+    ctx.decl().stream().forEach {
+      case func: DeclFunContext =>
+        topLevelDecl.put(func.name.getText, Fun(func.paramDecl.paramType.accept(TypeContextVisitor()), func.returnType.accept(TypeContextVisitor())))
+    }
+    EitherLift.liftEither(ctx.decl().iterator().asScala.map(_.accept(copy(c, vars ++ topLevelDecl))).toSeq) match {
+      case Left(err) => return Left(err)
+      case _ =>
+    }
+    if (!topLevelDecl.contains("main")) {
+      return Left(ERROR_MISSING_MAIN())
+    }
+    Right(null)
+  }
+
+  override def visitDeclFun(ctx: DeclFunContext): Either[Error, Type] = {
+    val paramT = ctx.paramDecl.paramType.accept(TypeContextVisitor())
+    for {
+      returnT <- ctx.returnExpr.accept(copy(c, vars + (ctx.paramDecl.name.getText -> paramT)))
+    } yield {
+      Fun(paramT, returnT)
+    }
+  }
+
+  override def visitIf(ctx: IfContext): Either[Error, Type] = {
+    for {
+      condT <- ctx.condition.accept(this)
+      thenT <- ctx.thenExpr.accept(this)
+      elseT <- ctx.elseExpr.accept(this)
+    } yield {
+      c.add(Constraint(condT, Bool()))
+      c.add(Constraint(thenT, elseT))
+      thenT
+    }
+  }
+
+  override def visitVar(ctx: VarContext): Either[Error, Type] = {
+    vars.get(ctx.name.getText) match {
+      case Some(t) => Right(t)
+      case _ => Left(ERROR_UNDEFINED_VARIABLE(ctx))
+    }
+  }
+
+  override def visitConstInt(ctx: ConstIntContext): Either[Error, Type] = Right(Nat())
+  override def visitConstFalse(ctx: ConstFalseContext): Either[Error, Type] = Right(Bool())
+  override def visitConstTrue(ctx: ConstTrueContext): Either[Error, Type] = Right(Bool())
+
+  override def visitSucc(ctx: SuccContext): Either[Error, Type] = {
+    for {
+      exprT <- ctx.n.accept(this)
+    } yield {
+      c.add(Constraint(exprT, Nat()))
+      Nat()
+    }
+  }
+
+  override def visitIsZero(ctx: IsZeroContext): Either[Error, Type] = {
+    for {
+      exprT <- ctx.n.accept(this)
+    } yield {
+      c.add(Constraint(exprT, Nat()))
+      Bool()
+    }
+  }
+
+  override def visitPred(ctx: PredContext): Either[Error, Type] = {
+    for {
+      exprT <- ctx.n.accept(this)
+    } yield {
+      c.add(Constraint(exprT, Nat()))
+      Nat()
+    }
+  }
+
+  override def visitAbstraction(ctx: AbstractionContext): Either[Error, Type] = {
+    val paramT = ctx.paramDecl.paramType.accept(TypeContextVisitor())
+    for {
+      returnT <- ctx.returnExpr.accept(copy(c, vars + (ctx.paramDecl.name.getText -> paramT)))
+    } yield {
+      Fun(paramT, returnT)
+    }
+  }
+
+  override def visitApplication(ctx: ApplicationContext): Either[Error, Type] = {
+    for {
+      funT <- ctx.fun.accept(this)
+      argT <- ctx.args.get(0).accept(this)
+    } yield {
+      val t = FreshTypeVar()
+      c.add(Constraint(funT, Fun(argT, t)))
+      t
+    }
+  }
+
+  override def visitParenthesisedExpr(ctx: ParenthesisedExprContext): Either[Error, Type] = ctx.expr().accept(this)
+  override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[Error, Type] = ctx.expr().accept(this)
+
+  override def defaultResult(): Right[Nothing, FreshTypeVar] = Right(FreshTypeVar())
 }
 
 private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
@@ -68,6 +169,8 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
   override def visitTypeNat(ctx: TypeNatContext): Type = Nat()
   override def visitTypeSum(ctx: TypeSumContext): Type = Sum(ctx.left.accept(this), ctx.right.accept(this))
   override def visitTypeList(ctx: TypeListContext): Type = ListT(ctx.type_.accept(this))
+
+  override def visitTypeVar(ctx: TypeVarContext): Type = FreshTypeVar()
 
   override def defaultResult(): Type = throw new UnsupportedOperationException()
 }
