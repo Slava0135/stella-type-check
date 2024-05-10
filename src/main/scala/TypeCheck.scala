@@ -5,6 +5,9 @@ import stellaParser._
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 
+import scala.::
+import scala.annotation.tailrec
+import scala.collection.immutable.{AbstractSet, SortedSet}
 import scala.collection.{immutable, mutable}
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 
@@ -52,9 +55,29 @@ object TypeCheck {
   }
 }
 
-private case class Constraint(left: Type, right: Type)
+private case class Constraint(left: Type, right: Type) {
+  def substitute(from: FreshTypeVar, to: Type): Constraint = Constraint(left.substitute(from, to), right.substitute(from, to))
+}
 
 private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.Map[String, Type]) extends stellaParserBaseVisitor[Either[Error, Type]] {
+
+  @tailrec
+  private def unify(c: immutable.List[Constraint]): Either[Error, Unit] = {
+    if (c.isEmpty) {
+      Right()
+    } else {
+      c match {
+        case Constraint(left, right)::tail =>
+          (left, right) match {
+            case _ if left == right => unify(tail)
+            case (left@FreshTypeVar(), right) => unify(tail.map(_.substitute(left, right)))
+            case (left, right@FreshTypeVar()) => unify(tail.map(_.substitute(right, left)))
+            case (Fun(argL, retL), Fun(argR, retR)) => unify(tail :+ Constraint(argL, argR) :+ Constraint(retL, retR))
+            case _ => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(left, right))
+          }
+      }
+    }
+  }
 
   override def visitProgram(ctx: ProgramContext): Either[Error, Type] = {
     val topLevelDecl = mutable.Map[String, Type]()
@@ -69,7 +92,10 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     if (!topLevelDecl.contains("main")) {
       return Left(ERROR_MISSING_MAIN())
     }
-    Right(null)
+    unify(c.toList) match {
+      case Right(_) => Right(null)
+      case Left(err) => Left(err)
+    }
   }
 
   override def visitDeclFun(ctx: DeclFunContext): Either[Error, Type] = {

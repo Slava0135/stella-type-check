@@ -2,7 +2,9 @@ package io.github.slava0135.stella
 
 import scala.collection.immutable
 
-sealed trait Type
+sealed trait Type {
+  def substitute(from: FreshTypeVar, to: Type): Type = if (this == from) { to } else this
+}
 
 final case class FreshTypeVar() extends Type {
   private val id: Int = FreshTypeVar.nextId()
@@ -35,6 +37,9 @@ final case class Bool() extends Type {
 
 final case class Fun(param: Type, res: Type) extends Type {
   override def toString: String = s"($param -> $res)"
+  override def substitute(from: FreshTypeVar, to: Type): Type = {
+    Fun(param.substitute(from, to), res.substitute(from, to))
+  }
 }
 
 final case class UnitT() extends Type {

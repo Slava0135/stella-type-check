@@ -42,13 +42,11 @@ final case class ERROR_UNDEFINED_VARIABLE(ctx: VarContext) extends Error(
   s"undefined variable ${ctx.name.getText} at ${Error.pos(ctx)}"
 )
 
-final case class ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx: ParserRuleContext, expected: Type, actual: Type) extends Error(
+final case class ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(expected: Type, actual: Type) extends Error(
   s"""expected type
      |  $expected
      |but got
-     |  $actual
-     |for expression at ${Error.pos(ctx)}
-     |${Error.prettyPrint(ctx)}""".stripMargin
+     |  $actual""".stripMargin
 )
 
 final case class ERROR_NOT_A_FUNCTION(t: Type, ctx: Either[ApplicationContext, FixContext]) extends Error(
