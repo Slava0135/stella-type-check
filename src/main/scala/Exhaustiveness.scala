@@ -29,19 +29,6 @@ private class CaseTree(val t: Type) {
             case _ => Seq.empty
           }
         }
-      case Variant(tags) =>
-        val matchedLabels = patterns
-          .filter(_.isInstanceOf[PatternVariantContext])
-          .map(_.asInstanceOf[PatternVariantContext].label.getText)
-          .toSeq
-        res addAll tags.filterNot(it => matchedLabels.contains(it.name)).map(it => s"<| ${it.name} = _ |>")
-        res addAll cases.flatMap { it =>
-          it match {
-            case (ctx: PatternVariantContext, Some(tree)) =>
-              tree.uncovered().map(it => s"<| ${ctx.label.getText} = $it |>")
-            case _ => Seq.empty
-          }
-        }
       case UnitT() =>
         if (!patterns.exists(p => p.isInstanceOf[PatternUnitContext])) {
           res += "unit"
@@ -97,11 +84,6 @@ object Exhaustiveness {
             pat = ctx.pattern()
           case (ctx: PatternInrContext, Sum(_, t)) =>
             nextT = t
-            tree = tree.cases.getOrElseUpdate(ctx, Some(new CaseTree(nextT))).get
-            pat = ctx.pattern()
-          case (ctx: PatternVariantContext, prevT: Variant) =>
-            val tag = ctx.label.getText
-            nextT = prevT.tag(tag).get
             tree = tree.cases.getOrElseUpdate(ctx, Some(new CaseTree(nextT))).get
             pat = ctx.pattern()
           case (ctx: PatternUnitContext, _: UnitT) =>

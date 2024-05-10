@@ -105,23 +105,6 @@ final case class ERROR_NOT_A_TUPLE(t: Type, ctx: DotTupleContext) extends Error(
      |${Error.prettyPrint(ctx)}""".stripMargin
 )
 
-final case class ERROR_UNEXPECTED_FIELD_ACCESS(r: Type, ctx: DotRecordContext) extends Error(
-  s"""unexpected access to field ${ctx.label.getText}
-     |in a record of type
-     |  $r
-     |in the expression at ${Error.pos(ctx)}
-     |${Error.prettyPrint(ctx.expr_)}""".stripMargin
-)
-
-final case class ERROR_NOT_A_RECORD(t: Type, ctx: DotRecordContext) extends Error(
-  s"""expected a record type but got
-     |  $t
-     |for the expression
-     |${Error.prettyPrint(ctx.expr_)}
-     |in the expression at ${Error.pos(ctx)}
-     |${Error.prettyPrint(ctx)}""".stripMargin
-)
-
 final case class ERROR_UNEXPECTED_TUPLE_LENGTH(expected: Int, actual: Int, t: Type, ctx: TupleContext) extends Error(
   s"""expected $expected components
      |for a tuple of type
@@ -136,27 +119,6 @@ final case class ERROR_UNEXPECTED_TUPLE(t: Type, ctx: TupleContext) extends Erro
      |  $t
      |but got a tuple at ${Error.pos(ctx)}
      |${Error.prettyPrint(ctx)}""".stripMargin
-)
-
-final case class ERROR_UNEXPECTED_RECORD(t: Type, ctx: RecordContext) extends Error(
-  s"""expected an expression of a non-record type
-     |  $t
-     |but got a record at ${Error.pos(ctx)}
-     |${Error.prettyPrint(ctx)}""".stripMargin
-)
-
-final case class ERROR_UNEXPECTED_RECORD_FIELDS(fields: Seq[String], t: Type, ctx: RecordContext) extends Error(
-  s"""unexpected fields
-     |  ${fields.addString(new StringBuilder(), ", ")}
-     |for an expected record of type at ${Error.pos(ctx)}
-     |  $t""".stripMargin
-)
-
-final case class ERROR_MISSING_RECORD_FIELDS(fields: Seq[String], t: Type, ctx: RecordContext) extends Error(
-  s"""missing fields
-     |  ${fields.addString(new StringBuilder(), ", ")}
-     |for an expected record of type at ${Error.pos(ctx)}
-     |  $t""".stripMargin
 )
 
 final case class ERROR_UNEXPECTED_INJECTION(t: Type, ctx: ExprContext) extends Error(
@@ -203,24 +165,4 @@ final case class ERROR_NOT_A_LIST(t: Type, ctx: ExprContext) extends Error(
 
 final case class ERROR_AMBIGUOUS_LIST_TYPE() extends Error(
   "type inference of empty lists is not supported (use type ascriptions)"
-)
-
-final case class ERROR_UNEXPECTED_VARIANT(t: Type, ctx: ExprContext) extends Error(
-  s"""expected an expression of a non-variant type
-     |  $t
-     |but got a variant at ${Error.pos(ctx)}
-     |${Error.prettyPrint(ctx)}""".stripMargin
-)
-
-final case class ERROR_UNEXPECTED_VARIANT_LABEL(label: String, t: Type, ctx: ExprContext) extends Error(
-  s"""unexpected label
-     |  $label
-     |for a variant type
-     |  $t
-     |in variant expression at ${Error.pos(ctx)}
-     |${Error.prettyPrint(ctx)}""".stripMargin
-)
-
-final case class ERROR_AMBIGUOUS_SUM_TYPE() extends Error(
-  "type inference for sum types is not supported (use type ascriptions or enable #ambiguous-type-as-bottom)"
 )
