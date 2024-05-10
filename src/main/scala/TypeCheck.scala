@@ -97,12 +97,15 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
   }
 
   override def visitDeclFun(ctx: DeclFunContext): Either[Error, Type] = {
-    val paramT = ctx.paramDecl.paramType.accept(TypeContextVisitor())
+    val funT = vars.get(ctx.name.getText) match {
+      case Some(t@Fun(_, _)) => t
+      case _ => ??? // TODO: nested function declartions
+    }
     for {
-      returnT <- ctx.returnExpr.accept(copy(c, vars + (ctx.paramDecl.name.getText -> paramT)))
+      returnT <- ctx.returnExpr.accept(copy(c, vars + (ctx.paramDecl.name.getText -> funT.param)))
     } yield {
-      c.add(Constraint(returnT, ctx.returnType.accept(TypeContextVisitor())))
-      Fun(paramT, returnT)
+      c.add(Constraint(returnT, funT.res))
+      funT
     }
   }
 
