@@ -43,9 +43,9 @@ final case class ERROR_UNDEFINED_VARIABLE(ctx: VarContext) extends Error(
 )
 
 final case class ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(expected: Type, actual: Type) extends Error(
-  s"""expected type
+  s"""when unifying expected type
      |  $expected
-     |but got
+     |against actual type
      |  $actual""".stripMargin
 )
 

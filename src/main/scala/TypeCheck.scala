@@ -5,9 +5,7 @@ import stellaParser._
 import org.antlr.v4.runtime.tree.ParseTreeWalker
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 
-import scala.::
 import scala.annotation.tailrec
-import scala.collection.immutable.{AbstractSet, SortedSet}
 import scala.collection.{immutable, mutable}
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 
@@ -103,6 +101,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       returnT <- ctx.returnExpr.accept(copy(c, vars + (ctx.paramDecl.name.getText -> paramT)))
     } yield {
+      c.add(Constraint(returnT, ctx.returnType.accept(TypeContextVisitor())))
       Fun(paramT, returnT)
     }
   }
@@ -174,6 +173,18 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       val t = FreshTypeVar()
       c.add(Constraint(funT, Fun(argT, t)))
       t
+    }
+  }
+
+  override def visitNatRec(ctx: NatRecContext): Either[Error, Type] = {
+    for {
+      nT <- ctx.n.accept(this)
+      initT <- ctx.initial.accept(this)
+      stepT <- ctx.step.accept(this)
+    } yield {
+      c.add(Constraint(nT, Nat()))
+      c.add(Constraint(stepT, Fun(Nat(), Fun(initT, initT))))
+      initT
     }
   }
 
