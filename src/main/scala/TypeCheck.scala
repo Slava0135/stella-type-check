@@ -30,7 +30,7 @@ object TypeCheck {
 //      "#let-bindings",
 //      "#sum-types",
 //      "#lists",
-//      "#fixpoint-combinator",
+      "#fixpoint-combinator",
 //      "#nested-function-declarations",
       "#type-reconstruction",
     )
@@ -217,6 +217,16 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
         case (t1, t2) => c.add(Constraint(t1, t2))
       }
       cases.head
+    }
+  }
+
+  override def visitFix(ctx: FixContext): Either[Error, Type] = {
+    for {
+      exprT <- ctx.expr().accept(this)
+    } yield {
+      val fv = FreshTypeVar()
+      c.add(Constraint(exprT, Fun(fv, fv)))
+      fv
     }
   }
 
