@@ -23,7 +23,7 @@ object TypeCheck {
     val tree = getTree(text)
     var required = Set.empty[String]
     val supported = Set(
-//      "#unit-type",
+      "#unit-type",
 //      "#pairs",
       "#natural-literals",
 //      "#type-ascriptions",
@@ -142,6 +142,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
   override def visitConstInt(ctx: ConstIntContext): Either[Error, Type] = Right(Nat())
   override def visitConstFalse(ctx: ConstFalseContext): Either[Error, Type] = Right(Bool())
   override def visitConstTrue(ctx: ConstTrueContext): Either[Error, Type] = Right(Bool())
+  override def visitConstUnit(ctx: ConstUnitContext): Either[Error, Type] = Right(UnitT())
 
   override def visitSucc(ctx: SuccContext): Either[Error, Type] = {
     for {
@@ -238,7 +239,7 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
 
   override def visitTypeAuto(ctx: TypeAutoContext): Type = FreshTypeVar()
 
-  override def defaultResult(): Type = throw new UnsupportedOperationException()
+  override def defaultResult(): Type = ???
 }
 
 final case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[immutable.Map[String, Type]] {
