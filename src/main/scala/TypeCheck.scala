@@ -1,5 +1,6 @@
 package io.github.slava0135.stella
 
+import EitherLift.liftEither
 import stellaParser._
 
 import org.antlr.v4.runtime.tree.ParseTreeWalker
@@ -201,6 +202,23 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     }
   }
 
+  override def visitMatch(ctx: MatchContext): Either[Error, Type] = {
+    for {
+      exprT <- ctx.expr().accept(this)
+      cases <- liftEither(
+        ctx.matchCase().iterator().asScala.map { it =>
+          val patternVars = it.pattern().accept(PatternVisitor(exprT))
+          it.expr().accept(copy(c, vars ++ patternVars))
+        }.toSeq
+      )
+    } yield {
+      cases.dropRight(1).zip(cases.drop(1)).foreach {
+        case (t1, t2) => c.add(Constraint(t1, t2))
+      }
+      cases.head
+    }
+  }
+
   override def visitParenthesisedExpr(ctx: ParenthesisedExprContext): Either[Error, Type] = ctx.expr().accept(this)
   override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[Error, Type] = ctx.expr().accept(this)
 
@@ -221,4 +239,11 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
   override def visitTypeVar(ctx: TypeVarContext): Type = FreshTypeVar()
 
   override def defaultResult(): Type = throw new UnsupportedOperationException()
+}
+
+final case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[immutable.Map[String, Type]] {
+  override def visitPatternVar(ctx: PatternVarContext): Map[String, Type] = {
+    immutable.Map(ctx.name.getText -> t)
+  }
+  override def defaultResult(): Map[String, Type] = ???
 }
