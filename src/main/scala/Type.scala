@@ -4,6 +4,7 @@ import scala.collection.immutable
 
 sealed trait Type {
   def substitute(from: FreshTypeVar, to: Type): Type = if (this == from) { to } else this
+  def contains(t: FreshTypeVar): Boolean = this == t
 }
 
 final case class FreshTypeVar() extends Type {
@@ -40,6 +41,7 @@ final case class Fun(param: Type, res: Type) extends Type {
   override def substitute(from: FreshTypeVar, to: Type): Type = {
     Fun(param.substitute(from, to), res.substitute(from, to))
   }
+  override def contains(t: FreshTypeVar): Boolean = param.contains(t) || res.contains(t)
 }
 
 final case class UnitT() extends Type {

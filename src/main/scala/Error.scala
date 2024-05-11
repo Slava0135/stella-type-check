@@ -164,3 +164,7 @@ final case class ERROR_NOT_A_LIST(t: Type, ctx: ExprContext) extends Error(
 final case class ERROR_AMBIGUOUS_LIST_TYPE() extends Error(
   "type inference of empty lists is not supported (use type ascriptions)"
 )
+
+final case class ERROR_OCCURS_CHECK_INFINITE_TYPE() extends Error(
+  "cannot construct an infinite type"
+)
