@@ -236,7 +236,7 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
   override def visitTypeSum(ctx: TypeSumContext): Type = Sum(ctx.left.accept(this), ctx.right.accept(this))
   override def visitTypeList(ctx: TypeListContext): Type = ListT(ctx.type_.accept(this))
 
-  override def visitTypeVar(ctx: TypeVarContext): Type = FreshTypeVar()
+  override def visitTypeAuto(ctx: TypeAutoContext): Type = FreshTypeVar()
 
   override def defaultResult(): Type = throw new UnsupportedOperationException()
 }

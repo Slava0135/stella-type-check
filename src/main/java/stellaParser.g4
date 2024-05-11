@@ -49,6 +49,8 @@ expr:
     | 'panic!'                    # Panic
     | 'throw' '(' expr_=expr ')'  # Throw
     | 'try' '{' tryExpr=expr '}' 'catch' '{' pat=pattern '=>' fallbackExpr=expr '}'  # TryCatch
+    | 'try' '{' tryExpr=expr '}' 'cast' 'as' type_=stellatype '{' pattern_=pattern '=>' expr_=expr '}'
+        'with' '{' fallbackExpr=expr '}'                             # TryCastAs
     | 'try' '{' tryExpr=expr '}' 'with' '{' fallbackExpr=expr '}'  # TryWith
     | 'inl' '(' expr_=expr ')'                     # Inl
     | 'inr' '(' expr_=expr ')'                     # Inr
@@ -132,6 +134,7 @@ pattern:
     | 'succ' '(' pattern_ = pattern ')'                         # PatternSucc
     | name = StellaIdent                                        # PatternVar
     | pattern_ = pattern 'as' type_ = stellatype                # PatternAsc
+    | pattern_ = pattern 'cast' 'as' type_ = stellatype         # PatternCastAs
     | '(' pattern_ = pattern ')'                                # ParenthesisedPattern;
 
 labelledPattern: label = StellaIdent '=' pattern_ = pattern;
@@ -161,6 +164,7 @@ stellatype:
     | 'Unit'                                                    # TypeUnit
     | 'Top'                                                     # TypeTop
     | 'Bot'                                                     # TypeBottom
+    | 'auto'                                                    # TypeAuto
     | name = StellaIdent                                        # TypeVar
     | '(' type_ = stellatype ')' # TypeParens;
 
