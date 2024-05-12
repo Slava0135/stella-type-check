@@ -26,7 +26,7 @@ object TypeCheck {
       "#unit-type",
       "#pairs",
       "#natural-literals",
-//      "#type-ascriptions",
+      "#type-ascriptions",
 //      "#let-bindings",
 //      "#sum-types",
 //      "#lists",
@@ -255,6 +255,15 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       } else {
         fv2
       }
+    }
+  }
+
+  override def visitTypeAsc(ctx: TypeAscContext): Either[Error, Type] = {
+    for {
+      exprT <- ctx.expr().accept(this)
+    } yield {
+      c.add(Constraint(exprT, ctx.type_.accept(TypeContextVisitor())))
+      exprT
     }
   }
 
