@@ -29,7 +29,7 @@ object TypeCheck {
       "#type-ascriptions",
 //      "#let-bindings",
       "#sum-types",
-//      "#lists",
+      "#lists",
       "#fixpoint-combinator",
 //      "#nested-function-declarations",
       "#type-reconstruction",
@@ -91,6 +91,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
             case (Fun(argL, retL), Fun(argR, retR)) => unify(tail :+ Constraint(argL, argR, ctx) :+ Constraint(retL, retR, ctx), u)
             case (Pair(argL, retL), Pair(argR, retR)) => unify(tail :+ Constraint(argL, argR, ctx) :+ Constraint(retL, retR, ctx), u)
             case (Sum(argL, retL), Sum(argR, retR)) => unify(tail :+ Constraint(argL, argR, ctx) :+ Constraint(retL, retR, ctx), u)
+            case (ListT(lt), ListT(rt)) => unify(tail :+ Constraint(lt, rt, ctx), u)
             case _ =>
               ctx match {
                 case ctx: PatternContext => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(left, ctx))
@@ -300,6 +301,56 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       exprT <- this visit ctx.expr()
     } yield {
       Sum(FreshTypeVar(), exprT)
+    }
+  }
+
+  override def visitList(ctx: ListContext): Either[Error, Type] = {
+    for {
+      exprT <- liftEither(ctx.expr().iterator().asScala.map(this visit _).toSeq)
+    } yield {
+      val fv = FreshTypeVar()
+      exprT.foreach { it =>
+        c.add(Constraint(it, fv, ctx))
+      }
+      ListT(fv)
+    }
+  }
+
+  override def visitConsList(ctx: ConsListContext): Either[Error, Type] = {
+    for {
+      headT <- this visit ctx.head
+      tailT <- this visit ctx.tail
+    } yield {
+      c.add(Constraint(tailT, ListT(headT), ctx))
+      tailT
+    }
+  }
+
+  override def visitHead(ctx: HeadContext): Either[Error, Type] = {
+    for {
+      listT <- this visit ctx.list
+    } yield {
+      val fv = FreshTypeVar()
+      c.add(Constraint(listT, ListT(fv), ctx))
+      fv
+    }
+  }
+
+  override def visitTail(ctx: TailContext): Either[Error, Type] = {
+    for {
+      listT <- this visit ctx.list
+    } yield {
+      c.add(Constraint(listT, ListT(FreshTypeVar()), ctx))
+      listT
+    }
+  }
+
+  override def visitIsEmpty(ctx: IsEmptyContext): Either[Error, Type] = {
+    for {
+      listT <- this visit ctx.list
+    } yield {
+      c.add(Constraint(listT, ListT(FreshTypeVar()), ctx))
+      Bool()
     }
   }
 

@@ -64,4 +64,8 @@ final case class Sum(left: Type, right: Type) extends Type {
 
 final case class ListT(t: Type) extends Type {
   override def toString: String = s"[$t]"
+  override def substitute(from: FreshTypeVar, to: Type): Type = {
+    ListT(t.substitute(from, to))
+  }
+  override def contains(t: FreshTypeVar): Boolean = this.t.contains(t)
 }
