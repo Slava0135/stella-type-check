@@ -28,7 +28,7 @@ object TypeCheck {
       "#natural-literals",
       "#type-ascriptions",
 //      "#let-bindings",
-//      "#sum-types",
+      "#sum-types",
 //      "#lists",
       "#fixpoint-combinator",
 //      "#nested-function-declarations",
@@ -54,7 +54,7 @@ object TypeCheck {
   }
 }
 
-private case class Constraint(left: Type, right: Type) {
+protected case class Constraint(left: Type, right: Type) {
   def substitute(from: FreshTypeVar, to: Type): Constraint = Constraint(left.substitute(from, to), right.substitute(from, to))
 }
 
@@ -83,6 +83,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
               }
             case (Fun(argL, retL), Fun(argR, retR)) => unify(tail :+ Constraint(argL, argR) :+ Constraint(retL, retR))
             case (Pair(argL, retL), Pair(argR, retR)) => unify(tail :+ Constraint(argL, argR) :+ Constraint(retL, retR))
+            case (Sum(argL, retL), Sum(argR, retR)) => unify(tail :+ Constraint(argL, argR) :+ Constraint(retL, retR))
             case _ => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(left, right))
           }
       }
@@ -209,7 +210,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       exprT <- ctx.expr().accept(this)
       cases <- liftEither(
         ctx.matchCase().iterator().asScala.map { it =>
-          val patternVars = it.pattern().accept(PatternVisitor(exprT))
+          val patternVars = it.pattern().accept(PatternVisitor(exprT, c))
           it.expr().accept(copy(c, vars ++ patternVars))
         }.toSeq
       )
@@ -267,6 +268,22 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     }
   }
 
+  override def visitInl(ctx: InlContext): Either[Error, Type] = {
+    for {
+      exprT <- ctx.expr().accept(this)
+    } yield {
+      Sum(exprT, FreshTypeVar())
+    }
+  }
+
+  override def visitInr(ctx: InrContext): Either[Error, Type] = {
+    for {
+      exprT <- ctx.expr().accept(this)
+    } yield {
+      Sum(FreshTypeVar(), exprT)
+    }
+  }
+
   override def visitParenthesisedExpr(ctx: ParenthesisedExprContext): Either[Error, Type] = ctx.expr().accept(this)
   override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[Error, Type] = ctx.expr().accept(this)
 
@@ -294,9 +311,24 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
   override def defaultResult(): Type = ???
 }
 
-final case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[immutable.Map[String, Type]] {
+final case class PatternVisitor(t: Type, c: mutable.Set[Constraint]) extends stellaParserBaseVisitor[immutable.Map[String, Type]] {
   override def visitPatternVar(ctx: PatternVarContext): Map[String, Type] = {
     immutable.Map(ctx.name.getText -> t)
   }
+
+  override def visitPatternInl(ctx: PatternInlContext): Map[String, Type] = {
+    val fv1 = FreshTypeVar()
+    val fv2 = FreshTypeVar()
+    c.add(Constraint(t, Sum(fv1, fv2)))
+    ctx.pattern().accept(PatternVisitor(fv1, c))
+  }
+
+  override def visitPatternInr(ctx: PatternInrContext): Map[String, Type] = {
+    val fv1 = FreshTypeVar()
+    val fv2 = FreshTypeVar()
+    c.add(Constraint(t, Sum(fv1, fv2)))
+    ctx.pattern().accept(PatternVisitor(fv2, c))
+  }
+
   override def defaultResult(): Map[String, Type] = ???
 }
