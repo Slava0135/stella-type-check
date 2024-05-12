@@ -4,7 +4,7 @@ import EitherLift.liftEither
 import stellaParser._
 
 import org.antlr.v4.runtime.tree.ParseTreeWalker
-import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
+import org.antlr.v4.runtime.{CharStreams, CommonTokenStream, ParserRuleContext}
 
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
@@ -54,37 +54,44 @@ object TypeCheck {
   }
 }
 
-protected case class Constraint(left: Type, right: Type) {
-  def substitute(from: FreshTypeVar, to: Type): Constraint = Constraint(left.substitute(from, to), right.substitute(from, to))
+protected case class Constraint(left: Type, right: Type, ctx: ParserRuleContext) {
+  def substitute(from: FreshTypeVar, to: Type): Constraint = copy(left.substitute(from, to), right.substitute(from, to))
 }
 
 private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.Map[String, Type]) extends stellaParserBaseVisitor[Either[Error, Type]] {
+  private type Unifier = mutable.ArrayBuffer[(FreshTypeVar, Type)]
 
   @tailrec
-  private def unify(c: immutable.List[Constraint]): Either[Error, Unit] = {
+  private def unify(c: immutable.List[Constraint], u: Unifier): Either[Error, Unit] = {
     if (c.isEmpty) {
       Right()
     } else {
       c match {
-        case Constraint(left, right)::tail =>
+        case Constraint(left, right, ctx)::tail =>
           (left, right) match {
-            case _ if left == right => unify(tail)
+            case _ if left == right => unify(tail, u)
             case (left@FreshTypeVar(), right) =>
               if (right.contains(left)) {
                 Left(ERROR_OCCURS_CHECK_INFINITE_TYPE())
               } else {
-                unify(tail.map(_.substitute(left, right)))
+                u.addOne((left, right))
+                unify(tail.map(_.substitute(left, right)), u)
               }
             case (left, right@FreshTypeVar()) =>
               if (left.contains(right)) {
                 Left(ERROR_OCCURS_CHECK_INFINITE_TYPE())
               } else {
-                unify(tail.map(_.substitute(right, left)))
+                u.addOne((right, left))
+                unify(tail.map(_.substitute(right, left)), u)
               }
-            case (Fun(argL, retL), Fun(argR, retR)) => unify(tail :+ Constraint(argL, argR) :+ Constraint(retL, retR))
-            case (Pair(argL, retL), Pair(argR, retR)) => unify(tail :+ Constraint(argL, argR) :+ Constraint(retL, retR))
-            case (Sum(argL, retL), Sum(argR, retR)) => unify(tail :+ Constraint(argL, argR) :+ Constraint(retL, retR))
-            case _ => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(left, right))
+            case (Fun(argL, retL), Fun(argR, retR)) => unify(tail :+ Constraint(argL, argR, ctx) :+ Constraint(retL, retR, ctx), u)
+            case (Pair(argL, retL), Pair(argR, retR)) => unify(tail :+ Constraint(argL, argR, ctx) :+ Constraint(retL, retR, ctx), u)
+            case (Sum(argL, retL), Sum(argR, retR)) => unify(tail :+ Constraint(argL, argR, ctx) :+ Constraint(retL, retR, ctx), u)
+            case _ =>
+              ctx match {
+                case ctx: PatternContext => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(left, ctx))
+                case _ => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(left, right))
+              }
           }
       }
     }
@@ -103,8 +110,11 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     if (!topLevelDecl.contains("main")) {
       return Left(ERROR_MISSING_MAIN())
     }
-    unify(c.toList) match {
-      case Right(_) => Right(null)
+    val unifier: Unifier = mutable.ArrayBuffer.empty
+    unify(c.toList, unifier) match {
+      case Right(_) =>
+        println(unifier)
+        Right(null)
       case Left(err) => Left(err)
     }
   }
@@ -117,7 +127,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       returnT <- ctx.returnExpr.accept(copy(c, vars + (ctx.paramDecl.name.getText -> funT.param)))
     } yield {
-      c.add(Constraint(returnT, funT.res))
+      c.add(Constraint(returnT, funT.res, ctx))
       funT
     }
   }
@@ -128,8 +138,8 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       thenT <- ctx.thenExpr.accept(this)
       elseT <- ctx.elseExpr.accept(this)
     } yield {
-      c.add(Constraint(condT, Bool()))
-      c.add(Constraint(thenT, elseT))
+      c.add(Constraint(condT, Bool(), ctx))
+      c.add(Constraint(thenT, elseT, ctx))
       thenT
     }
   }
@@ -150,7 +160,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       exprT <- ctx.n.accept(this)
     } yield {
-      c.add(Constraint(exprT, Nat()))
+      c.add(Constraint(exprT, Nat(), ctx))
       Nat()
     }
   }
@@ -159,7 +169,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       exprT <- ctx.n.accept(this)
     } yield {
-      c.add(Constraint(exprT, Nat()))
+      c.add(Constraint(exprT, Nat(), ctx))
       Bool()
     }
   }
@@ -168,7 +178,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       exprT <- ctx.n.accept(this)
     } yield {
-      c.add(Constraint(exprT, Nat()))
+      c.add(Constraint(exprT, Nat(), ctx))
       Nat()
     }
   }
@@ -188,7 +198,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       argT <- ctx.args.get(0).accept(this)
     } yield {
       val t = FreshTypeVar()
-      c.add(Constraint(funT, Fun(argT, t)))
+      c.add(Constraint(funT, Fun(argT, t), ctx))
       t
     }
   }
@@ -199,8 +209,8 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       initT <- ctx.initial.accept(this)
       stepT <- ctx.step.accept(this)
     } yield {
-      c.add(Constraint(nT, Nat()))
-      c.add(Constraint(stepT, Fun(Nat(), Fun(initT, initT))))
+      c.add(Constraint(nT, Nat(), ctx))
+      c.add(Constraint(stepT, Fun(Nat(), Fun(initT, initT)), ctx))
       initT
     }
   }
@@ -216,7 +226,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       )
     } yield {
       cases.dropRight(1).zip(cases.drop(1)).foreach {
-        case (t1, t2) => c.add(Constraint(t1, t2))
+        case (t1, t2) => c.add(Constraint(t1, t2, ctx))
       }
       cases.head
     }
@@ -227,7 +237,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       exprT <- ctx.expr().accept(this)
     } yield {
       val fv = FreshTypeVar()
-      c.add(Constraint(exprT, Fun(fv, fv)))
+      c.add(Constraint(exprT, Fun(fv, fv), ctx))
       fv
     }
   }
@@ -250,7 +260,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     } yield {
       val fv1 = FreshTypeVar()
       val fv2 = FreshTypeVar()
-      c.add(Constraint(pairT, Pair(fv1, fv2)))
+      c.add(Constraint(pairT, Pair(fv1, fv2), ctx))
       if (index == 1) {
         fv1
       } else {
@@ -263,7 +273,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       exprT <- ctx.expr().accept(this)
     } yield {
-      c.add(Constraint(exprT, ctx.type_.accept(TypeContextVisitor())))
+      c.add(Constraint(exprT, ctx.type_.accept(TypeContextVisitor()), ctx))
       exprT
     }
   }
@@ -319,14 +329,14 @@ final case class PatternVisitor(t: Type, c: mutable.Set[Constraint]) extends ste
   override def visitPatternInl(ctx: PatternInlContext): Map[String, Type] = {
     val fv1 = FreshTypeVar()
     val fv2 = FreshTypeVar()
-    c.add(Constraint(t, Sum(fv1, fv2)))
+    c.add(Constraint(t, Sum(fv1, fv2), ctx))
     ctx.pattern().accept(PatternVisitor(fv1, c))
   }
 
   override def visitPatternInr(ctx: PatternInrContext): Map[String, Type] = {
     val fv1 = FreshTypeVar()
     val fv2 = FreshTypeVar()
-    c.add(Constraint(t, Sum(fv1, fv2)))
+    c.add(Constraint(t, Sum(fv1, fv2), ctx))
     ctx.pattern().accept(PatternVisitor(fv2, c))
   }
 
