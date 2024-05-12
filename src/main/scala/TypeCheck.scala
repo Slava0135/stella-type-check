@@ -27,11 +27,10 @@ object TypeCheck {
       "#pairs",
       "#natural-literals",
       "#type-ascriptions",
-//      "#let-bindings",
+      "#let-bindings",
       "#sum-types",
       "#lists",
       "#fixpoint-combinator",
-//      "#nested-function-declarations",
       "#type-reconstruction",
     )
     val listener: stellaParserBaseListener = new stellaParserBaseListener {
@@ -351,6 +350,15 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     } yield {
       c.add(Constraint(listT, ListT(FreshTypeVar()), ctx))
       Bool()
+    }
+  }
+
+  override def visitLet(ctx: LetContext): Either[Error, Type] = {
+    for {
+      exprT <- this visit ctx.patternBinding.expr()
+      bodyT <- copy(c, vars ++ ctx.patternBinding.pattern().accept(PatternVisitor(exprT, c))) visit ctx.body
+    } yield {
+      bodyT
     }
   }
 
