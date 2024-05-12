@@ -42,11 +42,13 @@ final case class ERROR_UNDEFINED_VARIABLE(ctx: VarContext) extends Error(
   s"undefined variable ${ctx.name.getText} at ${Error.pos(ctx)}"
 )
 
-final case class ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(expected: Type, actual: Type) extends Error(
+final case class ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(expected: Type, actual: Type, ctx: ParserRuleContext) extends Error(
   s"""when unifying expected type
      |  $expected
      |against actual type
-     |  $actual""".stripMargin
+     |  $actual
+     |in expression
+     |${Error.prettyPrint(ctx)}""".stripMargin
 )
 
 final case class ERROR_NOT_A_FUNCTION(t: Type, ctx: Either[ApplicationContext, FixContext]) extends Error(
@@ -139,12 +141,10 @@ final case class ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t: Type, ctx: PatternContext)
      |  $t""".stripMargin
 )
 
-final case class ERROR_NONEXHAUSTIVE_MATCH_PATTERNS(patterns: Seq[Object], ctx: MatchContext) extends Error(
+final case class ERROR_NONEXHAUSTIVE_MATCH_PATTERNS(ctx: MatchContext) extends Error(
   s"""non-exhaustive pattern matches
      |when matching on expression at ${Error.pos(ctx)}
-     |${Error.prettyPrint(ctx.expr())}
-     |at least the following patterns are not matched:
-     |${Error.indentList(patterns)}""".stripMargin
+     |${Error.prettyPrint(ctx.expr())}""".stripMargin
 )
 
 final case class ERROR_UNEXPECTED_LIST(t: Type, ctx: ExprContext) extends Error(
@@ -165,6 +165,7 @@ final case class ERROR_AMBIGUOUS_LIST_TYPE() extends Error(
   "type inference of empty lists is not supported (use type ascriptions)"
 )
 
-final case class ERROR_OCCURS_CHECK_INFINITE_TYPE() extends Error(
-  "cannot construct an infinite type"
+final case class ERROR_OCCURS_CHECK_INFINITE_TYPE(ctx: ParserRuleContext) extends Error(
+  s"""cannot construct an infinite type when unifying
+     |${Error.prettyPrint(ctx)}""".stripMargin
 )

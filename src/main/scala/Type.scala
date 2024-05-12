@@ -56,6 +56,10 @@ final case class Pair(fst: Type, snd: Type) extends Type {
 
 final case class Sum(left: Type, right: Type) extends Type {
   override def toString: String = s"$left + $right"
+  override def substitute(from: FreshTypeVar, to: Type): Type = {
+    Sum(left.substitute(from, to), right.substitute(from, to))
+  }
+  override def contains(t: FreshTypeVar): Boolean = left.contains(t) || right.contains(t)
 }
 
 final case class ListT(t: Type) extends Type {
