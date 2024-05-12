@@ -13,7 +13,7 @@ import scala.jdk.CollectionConverters.IteratorHasAsScala
 object TypeCheck {
   def go(text: String): Result = {
     val tree = getTree(text)
-    tree.accept(TypeCheckVisitor(mutable.Set.empty, immutable.Map.empty, mutable.Map.empty)) match {
+    tree.accept(TypeCheckVisitor(mutable.ListBuffer.empty, immutable.Map.empty, mutable.Map.empty)) match {
       case Left(err) => Bad(err.toString)
       case Right(_) => Ok()
     }
@@ -57,7 +57,7 @@ case class Constraint(left: Type, right: Type, ctx: ParserRuleContext) {
   def substitute(from: FreshTypeVar, to: Type): Constraint = copy(left.substitute(from, to), right.substitute(from, to))
 }
 
-private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.Map[String, Type], types: mutable.Map[ParserRuleContext, Type])
+private case class TypeCheckVisitor(c: mutable.ListBuffer[Constraint], vars: immutable.Map[String, Type], types: mutable.Map[ParserRuleContext, Type])
   extends stellaParserBaseVisitor[Either[Error, Type]] {
 
   private type Unifier = mutable.Map[FreshTypeVar, Type]
@@ -133,7 +133,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       returnT <- copy(c, vars + (ctx.paramDecl.name.getText -> funT.param)) visit ctx.returnExpr
     } yield {
-      c.add(Constraint(returnT, funT.res, ctx))
+      c.append(Constraint(returnT, funT.res, ctx))
       funT
     }
   }
@@ -144,8 +144,8 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       thenT <- this visit ctx.thenExpr
       elseT <- this visit ctx.elseExpr
     } yield {
-      c.add(Constraint(condT, Bool(), ctx))
-      c.add(Constraint(thenT, elseT, ctx))
+      c.append(Constraint(condT, Bool(), ctx))
+      c.append(Constraint(thenT, elseT, ctx))
       thenT
     }
   }
@@ -166,7 +166,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       exprT <- this visit ctx.n
     } yield {
-      c.add(Constraint(exprT, Nat(), ctx))
+      c.append(Constraint(exprT, Nat(), ctx))
       Nat()
     }
   }
@@ -175,7 +175,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       exprT <- this visit ctx.n
     } yield {
-      c.add(Constraint(exprT, Nat(), ctx))
+      c.append(Constraint(exprT, Nat(), ctx))
       Bool()
     }
   }
@@ -184,7 +184,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       exprT <- this visit ctx.n
     } yield {
-      c.add(Constraint(exprT, Nat(), ctx))
+      c.append(Constraint(exprT, Nat(), ctx))
       Nat()
     }
   }
@@ -204,7 +204,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       argT <- this visit ctx.args.get(0)
     } yield {
       val t = FreshTypeVar()
-      c.add(Constraint(funT, Fun(argT, t), ctx))
+      c.append(Constraint(funT, Fun(argT, t), ctx))
       t
     }
   }
@@ -215,8 +215,8 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       initT <- this visit ctx.initial
       stepT <- this visit ctx.step
     } yield {
-      c.add(Constraint(nT, Nat(), ctx))
-      c.add(Constraint(stepT, Fun(Nat(), Fun(initT, initT)), ctx))
+      c.append(Constraint(nT, Nat(), ctx))
+      c.append(Constraint(stepT, Fun(Nat(), Fun(initT, initT)), ctx))
       initT
     }
   }
@@ -235,7 +235,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
         return Left(ERROR_ILLEGAL_EMPTY_MATCHING(ctx))
       }
       cases.dropRight(1).zip(cases.drop(1)).foreach {
-        case (t1, t2) => c.add(Constraint(t1, t2, ctx))
+        case (t1, t2) => c.append(Constraint(t1, t2, ctx))
       }
       cases.head
     }
@@ -246,7 +246,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       exprT <- this visit ctx.expr()
     } yield {
       val fv = FreshTypeVar()
-      c.add(Constraint(exprT, Fun(fv, fv), ctx))
+      c.append(Constraint(exprT, Fun(fv, fv), ctx))
       fv
     }
   }
@@ -269,7 +269,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     } yield {
       val fv1 = FreshTypeVar()
       val fv2 = FreshTypeVar()
-      c.add(Constraint(pairT, Pair(fv1, fv2), ctx))
+      c.append(Constraint(pairT, Pair(fv1, fv2), ctx))
       if (index == 1) {
         fv1
       } else {
@@ -282,7 +282,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       exprT <- this visit ctx.expr()
     } yield {
-      c.add(Constraint(exprT, ctx.type_.accept(TypeContextVisitor()), ctx))
+      c.append(Constraint(exprT, ctx.type_.accept(TypeContextVisitor()), ctx))
       exprT
     }
   }
@@ -309,7 +309,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     } yield {
       val fv = FreshTypeVar()
       exprT.foreach { it =>
-        c.add(Constraint(it, fv, ctx))
+        c.append(Constraint(it, fv, ctx))
       }
       ListT(fv)
     }
@@ -320,7 +320,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       headT <- this visit ctx.head
       tailT <- this visit ctx.tail
     } yield {
-      c.add(Constraint(tailT, ListT(headT), ctx))
+      c.append(Constraint(tailT, ListT(headT), ctx))
       tailT
     }
   }
@@ -330,7 +330,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
       listT <- this visit ctx.list
     } yield {
       val fv = FreshTypeVar()
-      c.add(Constraint(listT, ListT(fv), ctx))
+      c.append(Constraint(listT, ListT(fv), ctx))
       fv
     }
   }
@@ -339,7 +339,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       listT <- this visit ctx.list
     } yield {
-      c.add(Constraint(listT, ListT(FreshTypeVar()), ctx))
+      c.append(Constraint(listT, ListT(FreshTypeVar()), ctx))
       listT
     }
   }
@@ -348,7 +348,7 @@ private case class TypeCheckVisitor(c: mutable.Set[Constraint], vars: immutable.
     for {
       listT <- this visit ctx.list
     } yield {
-      c.add(Constraint(listT, ListT(FreshTypeVar()), ctx))
+      c.append(Constraint(listT, ListT(FreshTypeVar()), ctx))
       Bool()
     }
   }
@@ -398,7 +398,7 @@ private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
   override def defaultResult(): Type = ???
 }
 
-final case class PatternVisitor(t: Type, c: mutable.Set[Constraint]) extends stellaParserBaseVisitor[immutable.Map[String, Type]] {
+final case class PatternVisitor(t: Type, c: mutable.ListBuffer[Constraint]) extends stellaParserBaseVisitor[immutable.Map[String, Type]] {
   override def visitPatternVar(ctx: PatternVarContext): Map[String, Type] = {
     immutable.Map(ctx.name.getText -> t)
   }
@@ -406,14 +406,14 @@ final case class PatternVisitor(t: Type, c: mutable.Set[Constraint]) extends ste
   override def visitPatternInl(ctx: PatternInlContext): Map[String, Type] = {
     val fv1 = FreshTypeVar()
     val fv2 = FreshTypeVar()
-    c.add(Constraint(t, Sum(fv1, fv2), ctx))
+    c.append(Constraint(t, Sum(fv1, fv2), ctx))
     ctx.pattern().accept(PatternVisitor(fv1, c))
   }
 
   override def visitPatternInr(ctx: PatternInrContext): Map[String, Type] = {
     val fv1 = FreshTypeVar()
     val fv2 = FreshTypeVar()
-    c.add(Constraint(t, Sum(fv1, fv2), ctx))
+    c.append(Constraint(t, Sum(fv1, fv2), ctx))
     ctx.pattern().accept(PatternVisitor(fv2, c))
   }
 
