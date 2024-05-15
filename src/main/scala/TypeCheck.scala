@@ -72,12 +72,12 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   override def visitDeclFun(ctx: DeclFunContext): Either[Error, Type] = {
     val param = ctx.paramDecl(0)
     val funT = Fun(param.paramType.accept(TypeContextVisitor()), ctx.returnType.accept(TypeContextVisitor()))
-    EitherLift.liftEither(ctx.localDecls.iterator().asScala.map(copy(vars + (param.name.getText -> funT.param), None) check _).toSeq) match {
+    EitherLift.liftEither(ctx.localDecls.iterator().asScala.map(copy(vars + (param.name.getText -> funT.param), None) visit _).toSeq) match {
       case Right(localDecl) =>
         val localVars = vars + (param.name.getText -> funT.param) ++
           ctx.localDecls.iterator().asScala.map(_.asInstanceOf[DeclFunContext].name.getText)
             .zip(localDecl)
-        copy(localVars, Some(funT.res)) check ctx.returnExpr match {
+        copy(localVars, Some(funT.res)) visit ctx.returnExpr match {
           case err@Left(_) => err
           case Right(_) => Right(funT)
         }
@@ -86,26 +86,22 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitIf(ctx: IfContext): Either[Error, Type] = {
-    copy(vars, Some(Bool())).check(ctx.condition) match {
-      case err@Left(_) => return err
-      case _ =>
-    }
-    check(ctx.thenExpr) match {
-      case Right(thenT) =>
-        copy(vars, Some(thenT)).check(ctx.elseExpr) match {
-          case Right(elseT) => Right(elseT)
-          case err@Left(_) => err
-        }
-      case err@Left(_) => err
+    for {
+      _ <- copy(vars, Some(Bool())) visit ctx.condition
+      thenT <- this visit ctx.thenExpr
+      elseT <- copy(vars, Some(thenT)) visit ctx.elseExpr
+    } yield {
+      elseT
     }
   }
 
-  override def visitSucc(ctx: SuccContext): Either[Error, Type] = copy(vars, Some(Nat())) check ctx.expr()
+  override def visitSucc(ctx: SuccContext): Either[Error, Type] = copy(vars, Some(Nat())) visit ctx.expr()
 
   override def visitIsZero(ctx: IsZeroContext): Either[Error, Type] = {
-    copy(vars, Some(Nat())) check ctx.expr() match {
-      case Right(_) => Right(Bool())
-      case err@Left(_) => err
+    for {
+      _ <- copy(vars, Some(Nat())) visit ctx.expr()
+    } yield {
+      Bool()
     }
   }
 
@@ -117,31 +113,24 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitNatRec(ctx: NatRecContext): Either[Error, Type] = {
-    copy(vars, Some(Nat())) check ctx.n match {
-      case err@Left(_) => return err
-      case Right(_) =>
+    for {
+      _ <- copy(vars, Some(Nat())) visit ctx.n
+      initT <- copy(vars, None) visit ctx.initial
+      _ <- copy(vars, Some(Fun(Nat(), Fun(initT, initT)))) visit ctx.step
+    } yield {
+      initT
     }
-    val initialT = copy(vars, None) check ctx.initial match {
-      case Right(t) => t
-      case err@Left(_) => return err
-    }
-    val expectedStepT = Fun(Nat(), Fun(initialT, initialT))
-    copy(vars, Some(expectedStepT)) check ctx.step match {
-      case Right(_) =>
-      case err@Left(_) => return err
-    }
-    Right(initialT)
   }
 
   override def visitApplication(ctx: ApplicationContext): Either[Error, Type] = {
-    copy(vars, None) check ctx.fun match {
+    copy(vars, None) visit ctx.fun match {
       case Right(Fun(param, res)) =>
-        copy(vars, Some(param)).check(ctx.args.get(0)) match {
+        copy(vars, Some(param)).visit(ctx.args.get(0)) match {
           case Right(_) => Right(res)
-          case err@Left(_) => err
+          case err => err
         }
       case Right(t) => Left(ERROR_NOT_A_FUNCTION(t, Left(ctx)))
-      case err@Left(_) => err
+      case err => err
     }
   }
 
@@ -149,14 +138,16 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     val paramT = ctx.paramDecl.paramType.accept(TypeContextVisitor())
     expectedT match {
       case None =>
-        copy(vars + (ctx.paramDecl.name.getText -> paramT), None) check ctx.returnExpr match {
-          case Right(returnT) => Right(Fun(paramT, returnT))
-          case err@Left(_) => err
+        for {
+          returnT <- copy(vars + (ctx.paramDecl.name.getText -> paramT), None) visit ctx.returnExpr
+        } yield {
+          Fun(paramT, returnT)
         }
       case Some(Fun(t, r)) if t == paramT =>
-        copy(vars + (ctx.paramDecl.name.getText -> paramT), Some(r)) check ctx.returnExpr match {
-          case Right(returnT) => Right(Fun(paramT, returnT))
-          case err@Left(_) => err
+        for {
+          returnT <- copy(vars + (ctx.paramDecl.name.getText -> paramT), Some(r)) visit ctx.returnExpr
+        } yield {
+          Fun(paramT, returnT)
         }
       case Some(Fun(t, _)) => Left(ERROR_UNEXPECTED_TYPE_FOR_PARAMETER(t, paramT, ctx))
       case Some(t) => Left(ERROR_UNEXPECTED_LAMBDA(t, ctx))
@@ -164,7 +155,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitDotTuple(ctx: DotTupleContext): Either[Error, Type] = {
-    copy(vars, None) check ctx.expr() match {
+    copy(vars, None) visit ctx.expr() match {
       case Right(t@Tuple(a)) =>
         val index = ctx.index.getText.toInt
         if (index < 1 || index > a.length) {
@@ -173,12 +164,12 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           Right(a.apply(index - 1))
         }
       case Right(t) => Left(ERROR_NOT_A_TUPLE(t, ctx))
-      case err@Left(_) => err
+      case err => err
     }
   }
 
   override def visitDotRecord(ctx: DotRecordContext): Either[Error, Type] = {
-    copy(vars, None) check ctx.expr() match {
+    copy(vars, None) visit ctx.expr() match {
       case Right(r@Record(_)) =>
         val name = ctx.label.getText
         r.field(name) match {
@@ -207,7 +198,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case Some(t) =>
         return Left(ERROR_UNEXPECTED_TUPLE(t, ctx))
     }
-    val typesOrErr = ctx.exprs.iterator().asScala.map[Either[Error, Type]](copy(vars, None) check _).toSeq
+    val typesOrErr = ctx.exprs.iterator().asScala.map[Either[Error, Type]](copy(vars, None) visit _).toSeq
     EitherLift.liftEither(typesOrErr) match {
       case Right(types) => Right(Tuple(types))
       case Left(err) => Left(err)
@@ -221,7 +212,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           case Some(r@Record(_)) => r.field(it.name.getText) // TODO: missing field here?
           case None => None
         }
-        copy(vars, newExpectedT) check it.expr() match {
+        copy(vars, newExpectedT) visit it.expr() match {
           case Left(err) => Left(err)
           case Right(t) => Right(RecordField(it.name.getText, t))
         }
@@ -251,7 +242,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
   }
 
-  override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[Error, Type] = check(ctx.expr_)
+  override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[Error, Type] = visit(ctx.expr_)
 
   override def visitTypeAsc(ctx: TypeAscContext): Either[Error, Type] = {
     val actual = ctx.type_.accept(TypeContextVisitor())
@@ -267,22 +258,22 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitLet(ctx: LetContext): Either[Error, Type] = {
-    copy(vars, None) check ctx.patternBinding.rhs match {
+    copy(vars, None) visit ctx.patternBinding.rhs match {
       case Right(t) =>
         ctx.patternBinding.pat.accept(PatternVisitor(t)) match {
           case Left(err) => Left(err)
-          case Right(patVars) => copy(vars ++ patVars, expectedT) check ctx.body
+          case Right(patVars) => copy(vars ++ patVars, expectedT) visit ctx.body
         }
       case err@Left(_) => err
     }
   }
 
-  override def visitParenthesisedExpr(ctx: ParenthesisedExprContext): Either[Error, Type] = check(ctx.expr())
+  override def visitParenthesisedExpr(ctx: ParenthesisedExprContext): Either[Error, Type] = visit(ctx.expr())
 
   override def visitInl(ctx: InlContext): Either[Error, Type] = {
     expectedT match {
       case Some(s@Sum(left, _)) =>
-        copy(vars, Some(left)) check ctx.expr() match {
+        copy(vars, Some(left)) visit ctx.expr() match {
           case Right(_) => Right(s)
           case err@Left(_) => err
         }
@@ -294,7 +285,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   override def visitInr(ctx: InrContext): Either[Error, Type] = {
     expectedT match {
       case Some(s@Sum(_, right)) =>
-        copy(vars, Some(right)) check ctx.expr() match {
+        copy(vars, Some(right)) visit ctx.expr() match {
           case Right(_) => Right(s)
           case err@Left(_) => err
         }
@@ -307,7 +298,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     if (ctx.cases.isEmpty) {
       return Left(ERROR_ILLEGAL_EMPTY_MATCHING(ctx))
     }
-    val matchT = copy(vars, None) check ctx.expr() match {
+    val matchT = copy(vars, None) visit ctx.expr() match {
       case Right(t) => t
       case err@Left(_) => return err
     }
@@ -316,7 +307,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         Exhaustiveness.check(matchT, ctx) match {
           case Left(err) => Left(err)
           case _ =>
-            EitherLift.liftEither(ctx.cases.iterator().asScala.zip(caseVars).map { case (c, v) => copy(vars ++ v) check c }.toSeq) match {
+            EitherLift.liftEither(ctx.cases.iterator().asScala.zip(caseVars).map { case (c, v) => copy(vars ++ v) visit c }.toSeq) match {
               case Right(ts) =>
                 val t = ts.head
                 ts.find(_ != t) match {
@@ -342,9 +333,9 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
             }
         }
       } else {
-        copy(vars, t) check ctx.expr match {
+        copy(vars, t) visit ctx.expr match {
           case Right(t) =>
-            EitherLift.liftEither(ctx.expr().iterator().asScala.map(copy(vars, Some(t)) check _).toSeq) match {
+            EitherLift.liftEither(ctx.expr().iterator().asScala.map(copy(vars, Some(t)) visit _).toSeq) match {
               case Right(_) => Right(ListT(t))
               case Left(err) => Left(err)
             }
@@ -361,9 +352,9 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 
   override def visitConsList(ctx: ConsListContext): Either[Error, Type] = {
     def go(t: Option[Type]): Either[Error, Type] = {
-      copy(vars, t) check ctx.head match {
+      copy(vars, t) visit ctx.head match {
         case Right(t) =>
-          copy(vars, Some(ListT(t))) check ctx.tail match {
+          copy(vars, Some(ListT(t))) visit ctx.tail match {
             case Right(_) => Right(ListT(t))
             case err@Left(_) => err
           }
@@ -415,7 +406,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case Some(v@Variant(_)) =>
         v.tag(ctx.label.getText) match {
           case Some(t) =>
-            copy(vars, Some(t)) check ctx.rhs match {
+            copy(vars, Some(t)) visit ctx.rhs match {
               case Right(_) => Right(v)
               case err@Left(_) => err
             }
@@ -428,7 +419,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
 
-  private def check(ctx: ParserRuleContext): Either[Error, Type] = {
+  private def visit(ctx: ParserRuleContext): Either[Error, Type] = {
     ctx.accept(this) match {
       case Right(t) if expectedT.isEmpty || expectedT.contains(t) => Right(t)
       case Right(t) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, expectedT.get, t))
@@ -475,22 +466,14 @@ private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Eithe
 
   override def visitPatternInl(ctx: PatternInlContext): Either[Error, immutable.Map[String, Type]] = {
     t match {
-      case Sum(left, _) =>
-        ctx.pattern().accept(copy(left)) match {
-          case ok@Right(_) => ok
-          case err@Left(_) => err
-        }
+      case Sum(left, _) => ctx.pattern().accept(copy(left))
       case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
     }
   }
 
   override def visitPatternInr(ctx: PatternInrContext): Either[Error, immutable.Map[String, Type]] = {
     t match {
-      case Sum(_, right) =>
-        ctx.pattern().accept(copy(right)) match {
-          case ok@Right(_) => ok
-          case err@Left(_) => err
-        }
+      case Sum(_, right) => ctx.pattern().accept(copy(right))
       case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
     }
   }
@@ -499,11 +482,7 @@ private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Eithe
     t match {
       case v@Variant(_) =>
         v.tag(ctx.label.getText) match {
-          case Some(t) =>
-            ctx.pattern().accept(copy(t)) match {
-              case ok@Right(_) => ok
-              case err@Left(_) => err
-            }
+          case Some(t) => ctx.pattern().accept(copy(t))
           case None => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
         }
       case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
@@ -540,11 +519,7 @@ private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Eithe
 
   override def visitPatternSucc(ctx: PatternSuccContext): Either[Error, Map[String, Type]] = {
     t match {
-      case Nat() =>
-        ctx.pattern().accept(this) match {
-          case ok@Right(_) => ok
-          case err@Left(_) => err
-        }
+      case Nat() => ctx.pattern().accept(this)
       case _ => Left(ERROR_UNEXPECTED_PATTERN_FOR_TYPE(t, ctx))
     }
   }
