@@ -33,7 +33,7 @@ class TestTypeCheck extends AnyFunSpec {
                       .toSeq
                     altErrors.find(e => msg.contains(e)) match {
                       case Some(err) => info(s"NOTE: using alternative error tag: $err")
-                      case None => fail(s"($testName:1) wrong error type")
+                      case None => fail(s"($testName:1) wrong error type:\n$msg")
                     }
                   }
               }

@@ -224,3 +224,7 @@ final case class ERROR_UNEXPECTED_VARIANT_LABEL(label: String, t: Type, ctx: Exp
 final case class ERROR_AMBIGUOUS_SUM_TYPE() extends Error(
   "type inference for sum types is not supported (use type ascriptions or enable #ambiguous-type-as-bottom)"
 )
+
+final case class ERROR_AMBIGUOUS_VARIANT_TYPE() extends Error(
+  "type inference for variant types is not supported (use type ascriptions or enable #ambiguous-type-as-bottom)"
+)
