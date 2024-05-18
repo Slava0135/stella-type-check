@@ -11,7 +11,7 @@ import scala.jdk.CollectionConverters.IteratorHasAsScala
 object TypeCheck {
   def go(text: String): Result = {
     val tree = getTree(text)
-    tree.accept(TypeCheckVisitor(immutable.Map.empty, None)) match {
+    tree.accept(TypeCheckVisitor(immutable.Map.empty, None, Seq.empty)) match {
       case Left(err) => Bad(err.toString)
       case Right(_) => Ok()
     }
@@ -33,6 +33,7 @@ object TypeCheck {
       "#fixpoint-combinator",
       "#variants",
       "#nested-function-declarations",
+      "#universal-types",
 //      "#structural-patterns",
     )
     val listener: stellaParserBaseListener = new stellaParserBaseListener {
@@ -51,14 +52,39 @@ object TypeCheck {
   }
 }
 
-private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT: Option[Type]) extends stellaParserBaseVisitor[Either[Error, Type]] {
+private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT: Option[Type], typeVars: Seq[GenericType]) extends stellaParserBaseVisitor[Either[Error, Type]] {
 
   override def visitProgram(ctx: ProgramContext): Either[Error, Type] = {
     val topLevelDecl = mutable.Map[String, Type]()
-    ctx.decl().stream().forEach(it => {
-      val func = it.asInstanceOf[DeclFunContext]
-      topLevelDecl.put(func.name.getText, Fun(func.paramDecl(0).paramType.accept(new TypeContextVisitor), func.returnType.accept(new TypeContextVisitor)))
-    })
+    ctx.decl().stream().forEach{
+      case func: DeclFunContext =>
+        val paramT = func.paramDecl(0).paramType.accept(TypeContextVisitor(typeVars)) match {
+          case Right(t) => t
+          case err => return err
+        }
+        val returnT = func.returnType.accept(TypeContextVisitor(typeVars)) match {
+          case Right(t) => t
+          case err => return err
+        }
+        topLevelDecl.put(
+          func.name.getText,
+          Fun(paramT, returnT)
+        )
+      case genericFunc: DeclFunGenericContext =>
+        val generics = genericFunc.generics.iterator().asScala.map(it => GenericType(it.getText)).toSeq
+        val paramT = genericFunc.paramDecl(0).paramType.accept(TypeContextVisitor(generics)) match {
+          case Right(t) => t
+          case err => return err
+        }
+        val returnT = genericFunc.returnType.accept(TypeContextVisitor(generics)) match {
+          case Right(t) => t
+          case err => return err
+        }
+        topLevelDecl.put(
+          genericFunc.name.getText,
+          GenericFun(generics, paramT, returnT)
+        )
+    }
     EitherLift.liftEither(ctx.decl().iterator().asScala.map(_.accept(copy(vars ++ topLevelDecl, None))).toSeq) match {
       case Left(err) => return Left(err)
       case _ =>
@@ -71,13 +97,46 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 
   override def visitDeclFun(ctx: DeclFunContext): Either[Error, Type] = {
     val param = ctx.paramDecl(0)
-    val funT = Fun(param.paramType.accept(TypeContextVisitor()), ctx.returnType.accept(TypeContextVisitor()))
+    val paramT = param.paramType.accept(TypeContextVisitor(typeVars)) match {
+      case Right(t) => t
+      case err => return err
+    }
+    val returnT = ctx.returnType.accept(TypeContextVisitor(typeVars)) match {
+      case Right(t) => t
+      case err => return err
+    }
+    val funT = Fun(paramT, returnT)
     EitherLift.liftEither(ctx.localDecls.iterator().asScala.map(copy(vars + (param.name.getText -> funT.param), None) visit _).toSeq) match {
       case Right(localDecl) =>
         val localVars = vars + (param.name.getText -> funT.param) ++
           ctx.localDecls.iterator().asScala.map(_.asInstanceOf[DeclFunContext].name.getText)
             .zip(localDecl)
         copy(localVars, Some(funT.res)) visit ctx.returnExpr match {
+          case err@Left(_) => err
+          case Right(_) => Right(funT)
+        }
+      case Left(err) => Left(err)
+    }
+  }
+
+  override def visitDeclFunGeneric(ctx: DeclFunGenericContext): Either[Error, Type] = {
+    val param = ctx.paramDecl(0)
+    val generics = ctx.generics.iterator().asScala.map(it => GenericType(it.getText)).toSeq
+    val paramT = param.paramType.accept(TypeContextVisitor(generics)) match {
+      case Right(t) => t
+      case err => return err
+    }
+    val returnT = ctx.returnType.accept(TypeContextVisitor(generics)) match {
+      case Right(t) => t
+      case err => return err
+    }
+    val funT = GenericFun(generics, paramT, returnT)
+    EitherLift.liftEither(ctx.localDecls.iterator().asScala.map(copy(vars + (param.name.getText -> funT.param), None, typeVars ++ generics) visit _).toSeq) match {
+      case Right(localDecl) =>
+        val localVars = vars + (param.name.getText -> funT.param) ++
+          ctx.localDecls.iterator().asScala.map(_.asInstanceOf[DeclFunContext].name.getText)
+            .zip(localDecl)
+        copy(localVars, Some(funT.res), typeVars ++ generics) visit ctx.returnExpr match {
           case err@Left(_) => err
           case Right(_) => Right(funT)
         }
@@ -135,7 +194,10 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitAbstraction(ctx: AbstractionContext): Either[Error, Type] = {
-    val paramT = ctx.paramDecl.paramType.accept(TypeContextVisitor())
+    val paramT = ctx.paramDecl.paramType.accept(TypeContextVisitor(typeVars)) match {
+      case Right(t) => t
+      case err => return err
+    }
     expectedT match {
       case None =>
         for {
@@ -245,7 +307,10 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   override def visitTerminatingSemicolon(ctx: TerminatingSemicolonContext): Either[Error, Type] = visit(ctx.expr_)
 
   override def visitTypeAsc(ctx: TypeAscContext): Either[Error, Type] = {
-    val actual = ctx.type_.accept(TypeContextVisitor())
+    val actual = ctx.type_.accept(TypeContextVisitor(typeVars)) match {
+      case Right(t) => t
+      case err => return err
+    }
     copy(vars, Some(actual)) checkIgnoreType ctx.expr() match {
       case Right(expected) =>
         if (expected == actual || expected.isInstanceOf[Unknown]) {
@@ -417,6 +482,38 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
     }
   }
 
+  override def visitTypeAbstraction(ctx: TypeAbstractionContext): Either[Error, Type] = {
+    copy(typeVars = typeVars ++ ctx.generics.iterator().asScala.map(it => GenericType(it.getText))) visit ctx.expr()
+  }
+
+  override def visitTypeApplication(ctx: TypeApplicationContext): Either[Error, Type] = {
+    this visit ctx.expr() match {
+      case Right(GenericFun(generics, param, res)) =>
+        val expected = generics.size
+        val actual = ctx.types.size()
+        if (expected != actual) {
+          Left(ERROR_INCORRECT_NUMBER_OF_TYPE_ARGUMENTS(expected, actual, ctx))
+        } else {
+          val types = EitherLift.liftEither(ctx.types.iterator().asScala.map(_.accept(TypeContextVisitor(typeVars))).toSeq) match {
+            case Right(t) => t
+            case Left(err) => return Left(err)
+          }
+          val genericToType = generics.zip(types)
+          var paramT = param
+          genericToType.foreach {
+            case (genericType, value) => paramT = paramT.replace(genericType, value)
+          }
+          var resT = res
+          genericToType.foreach {
+            case (genericType, value) => resT = resT.replace(genericType, value)
+          }
+          Right(Fun(paramT, resT))
+        }
+      case Right(t) => Left(ERROR_NOT_A_GENERIC_FUNCTION(t, ctx))
+      case err => err
+    }
+  }
+
   override def defaultResult(): Either[Error, Type] = Right(Unknown())
 
   private def visit(ctx: ParserRuleContext): Either[Error, Type] = {
@@ -435,28 +532,76 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 }
 
-private case class TypeContextVisitor() extends stellaParserBaseVisitor[Type] {
-  override def visitTypeFun(ctx: TypeFunContext): Type = Fun(ctx.paramTypes.get(0).accept(this), ctx.returnType.accept(this))
-  override def visitTypeParens(ctx: TypeParensContext): Type = ctx.type_.accept(this)
-  override def visitTypeTuple(ctx: TypeTupleContext): Type = {
-    val types = ctx.types.iterator().asScala.map[Type](_.accept(this))
-    Tuple(types.toSeq)
+private case class TypeContextVisitor(typeVars: Seq[GenericType]) extends stellaParserBaseVisitor[Either[Error, Type]] {
+  override def visitTypeFun(ctx: TypeFunContext): Either[Error, Type] = {
+    for {
+      paramT <- ctx.paramTypes.get(0).accept(this)
+      returnT <- ctx.returnType.accept(this)
+    } yield {
+      Fun(paramT, returnT)
+    }
   }
-  override def visitTypeRecord(ctx: TypeRecordContext): Type = {
-    val fields = ctx.fieldTypes.iterator().asScala.map[RecordField](it => RecordField(it.label.getText, it.type_.accept(this)))
-    Record(fields.toSeq)
+  override def visitTypeParens(ctx: TypeParensContext): Either[Error, Type] = ctx.type_.accept(this)
+  override def visitTypeTuple(ctx: TypeTupleContext): Either[Error, Type] = {
+    for {
+      types <- EitherLift.liftEither(ctx.types.iterator().asScala.map(_.accept(this)).toSeq)
+    } yield {
+      Tuple(types)
+    }
   }
-  override def visitTypeUnit(ctx: TypeUnitContext): Type = UnitT()
-  override def visitTypeBool(ctx: TypeBoolContext): Type = Bool()
-  override def visitTypeNat(ctx: TypeNatContext): Type = Nat()
-  override def visitTypeSum(ctx: TypeSumContext): Type = Sum(ctx.left.accept(this), ctx.right.accept(this))
-  override def visitTypeList(ctx: TypeListContext): Type = ListT(ctx.type_.accept(this))
-  override def visitTypeVariant(ctx: TypeVariantContext): Type = {
-    val tags = ctx.fieldTypes.iterator().asScala.map[VariantTag](it => VariantTag(it.label.getText, it.type_.accept(this)))
-    Variant(tags.toSeq)
+  override def visitTypeRecord(ctx: TypeRecordContext): Either[Error, Type] = {
+    for {
+      fields <- EitherLift.liftEither(ctx.fieldTypes.iterator().asScala.map[Either[Error, RecordField]]{ it =>
+        for {
+          t <- it.type_.accept(this)
+        } yield {
+          RecordField(it.label.getText, t)
+        }
+      }.toSeq)
+    } yield {
+      Record(fields)
+    }
+  }
+  override def visitTypeUnit(ctx: TypeUnitContext): Either[Error, Type] = Right(UnitT())
+  override def visitTypeBool(ctx: TypeBoolContext): Either[Error, Type] = Right(Bool())
+  override def visitTypeNat(ctx: TypeNatContext): Either[Error, Type] = Right(Nat())
+  override def visitTypeSum(ctx: TypeSumContext): Either[Error, Type] = {
+    for {
+      leftT <- ctx.left.accept(this)
+      rightT <- ctx.right.accept(this)
+    } yield {
+      Sum(leftT, rightT)
+    }
+  }
+  override def visitTypeList(ctx: TypeListContext): Either[Error, Type] = {
+    for {
+      t <- ctx.type_.accept(this)
+    } yield {
+      ListT(t)
+    }
+  }
+  override def visitTypeVariant(ctx: TypeVariantContext): Either[Error, Type] = {
+    for {
+      tags <- EitherLift.liftEither(ctx.fieldTypes.iterator().asScala.map[Either[Error, VariantTag]]{ it =>
+        for {
+          t <- it.type_.accept(this)
+        } yield {
+          VariantTag(it.label.getText, t)
+        }
+      }.toSeq)
+    } yield {
+      Variant(tags)
+    }
   }
 
-  override def defaultResult(): Type = Unknown()
+  override def visitTypeVar(ctx: TypeVarContext): Either[Error, Type] = {
+    typeVars.find(_.name == ctx.name.getText) match {
+      case Some(t) => Right(t)
+      case None => Left(ERROR_UNDEFINED_TYPE_VARIABLE(ctx.name.getText, ctx))
+    }
+  }
+
+  override def defaultResult(): Either[Error, Type] = Right(Unknown())
 }
 
 private case class PatternVisitor(t: Type) extends stellaParserBaseVisitor[Either[Error, immutable.Map[String, Type]]] {

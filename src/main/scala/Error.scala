@@ -228,3 +228,27 @@ final case class ERROR_AMBIGUOUS_SUM_TYPE() extends Error(
 final case class ERROR_AMBIGUOUS_VARIANT_TYPE() extends Error(
   "type inference for variant types is not supported (use type ascriptions or enable #ambiguous-type-as-bottom)"
 )
+
+final case class ERROR_NOT_A_GENERIC_FUNCTION(t: Type, ctx: TypeApplicationContext) extends Error(
+  s"""expected a universal type but got
+     |  $t
+     |for the expression
+     |${Error.prettyPrint(ctx.fun)}
+     |in the type application at ${Error.pos(ctx)}
+     |${Error.prettyPrint(ctx)}
+     |""".stripMargin
+)
+
+final case class ERROR_INCORRECT_NUMBER_OF_TYPE_ARGUMENTS(expected: Int, actual: Int, ctx: TypeApplicationContext) extends Error(
+  s"""expected $expected type arguments
+     |for the expression
+     |${Error.prettyPrint(ctx.expr())}
+     |but got $actual type arguments
+     |in the type application at ${Error.pos(ctx)}
+     |${Error.prettyPrint(ctx)}
+     |""".stripMargin
+)
+
+final case class ERROR_UNDEFINED_TYPE_VARIABLE(name: String, ctx: ParserRuleContext) extends Error(
+  s"undefined type variable $name at ${Error.pos(ctx)}"
+)

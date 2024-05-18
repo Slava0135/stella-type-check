@@ -2,7 +2,14 @@ package io.github.slava0135.stella
 
 import scala.collection.immutable
 
-sealed trait Type
+sealed trait Type {
+  def replace(genericType: GenericType, withType: Type): Type =
+    if (this == genericType) withType else this
+}
+
+final case class GenericType(name: String) extends Type {
+  override def toString: String = name
+}
 
 final case class Unknown() extends Type {
   override def toString: String = "???"
@@ -19,6 +26,16 @@ final case class Bool() extends Type {
 
 final case class Fun(param: Type, res: Type) extends Type {
   override def toString: String = s"($param -> $res)"
+  override def replace(genericType: GenericType, withType: Type): Type = {
+    Fun(param.replace(genericType, withType), res.replace(genericType, withType))
+  }
+}
+
+final case class GenericFun(generics: Seq[GenericType], param: Type, res: Type) extends Type {
+  override def toString: String = s"${generics.map(it => s"forall ${it.name}.")}($param -> $res)"
+  override def replace(genericType: GenericType, withType: Type): Type = {
+    GenericFun(generics, param.replace(genericType, withType), res.replace(genericType, withType))
+  }
 }
 
 final case class UnitT() extends Type {
@@ -35,6 +52,9 @@ final case class Tuple(types: immutable.Seq[Type]) extends Type {
     }
   }
   override def toString: String = s"{${types.addString(new StringBuilder(), ", ")}}"
+  override def replace(genericType: GenericType, withType: Type): Type = {
+    Tuple(types.map(_.replace(genericType, withType)))
+  }
 }
 
 final case class RecordField(name: String, t: Type) {
@@ -53,14 +73,23 @@ final case class Record(fields: immutable.Seq[RecordField]) extends Type {
     }
   }
   override def toString: String = s"{${fields.addString(new StringBuilder(), ", ")}}"
+  override def replace(genericType: GenericType, withType: Type): Type = {
+    Record(fields.map(it => RecordField(it.name, it.t.replace(genericType, withType))))
+  }
 }
 
 final case class Sum(left: Type, right: Type) extends Type {
   override def toString: String = s"$left + $right"
+  override def replace(genericType: GenericType, withType: Type): Type = {
+    Sum(left.replace(genericType, withType), right.replace(genericType, withType))
+  }
 }
 
 final case class ListT(t: Type) extends Type {
   override def toString: String = s"[$t]"
+  override def replace(genericType: GenericType, withType: Type): Type = {
+    ListT(t.replace(genericType, withType))
+  }
 }
 
 final case class VariantTag(name: String, t: Type) {
@@ -79,4 +108,7 @@ final case class Variant(tags: immutable.Seq[VariantTag]) extends Type {
     }
   }
   override def toString: String = s"<| ${tags.addString(new StringBuilder(), ", ")} |>"
+  override def replace(genericType: GenericType, withType: Type): Type = {
+    Variant(tags.map(it => VariantTag(it.name, it.t.replace(genericType, withType))))
+  }
 }
