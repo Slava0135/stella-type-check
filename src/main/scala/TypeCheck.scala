@@ -82,7 +82,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
         }
         topLevelDecl.put(
           genericFunc.name.getText,
-          GenericFun(generics, paramT, returnT)
+          ForAll(generics, Fun(paramT, returnT))
         )
     }
     EitherLift.liftEither(ctx.decl().iterator().asScala.map(_.accept(copy(vars ++ topLevelDecl, None))).toSeq) match {
@@ -130,7 +130,8 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
       case Right(t) => t
       case err => return err
     }
-    val funT = GenericFun(generics, paramT, returnT)
+    val funT = Fun(paramT, returnT)
+    val t = ForAll(generics, funT)
     EitherLift.liftEither(ctx.localDecls.iterator().asScala.map(copy(vars + (param.name.getText -> funT.param), None, typeVars ++ generics) visit _).toSeq) match {
       case Right(localDecl) =>
         val localVars = vars + (param.name.getText -> funT.param) ++
@@ -138,7 +139,7 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
             .zip(localDecl)
         copy(localVars, Some(funT.res), typeVars ++ generics) visit ctx.returnExpr match {
           case err@Left(_) => err
-          case Right(_) => Right(funT)
+          case Right(_) => Right(t)
         }
       case Left(err) => Left(err)
     }
@@ -483,12 +484,17 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
   }
 
   override def visitTypeAbstraction(ctx: TypeAbstractionContext): Either[Error, Type] = {
-    copy(typeVars = typeVars ++ ctx.generics.iterator().asScala.map(it => GenericType(it.getText))) visit ctx.expr()
+    val generics = ctx.generics.iterator().asScala.map(it => GenericType(it.getText)).toSeq
+    for {
+      funT <- copy(vars, expectedT.map(_.asInstanceOf[ForAll].funT), typeVars ++ generics) visit ctx.expr()
+    } yield {
+      ForAll(generics, funT.asInstanceOf[Fun])
+    }
   }
 
   override def visitTypeApplication(ctx: TypeApplicationContext): Either[Error, Type] = {
     this visit ctx.expr() match {
-      case Right(GenericFun(generics, param, res)) =>
+      case Right(ForAll(generics, funT)) =>
         val expected = generics.size
         val actual = ctx.types.size()
         if (expected != actual) {
@@ -499,11 +505,11 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
             case Left(err) => return Left(err)
           }
           val genericToType = generics.zip(types)
-          var paramT = param
+          var paramT = funT.param
           genericToType.foreach {
             case (genericType, value) => paramT = paramT.replace(genericType, value)
           }
-          var resT = res
+          var resT = funT.res
           genericToType.foreach {
             case (genericType, value) => resT = resT.replace(genericType, value)
           }
@@ -598,6 +604,15 @@ private case class TypeContextVisitor(typeVars: Seq[GenericType]) extends stella
     typeVars.find(_.name == ctx.name.getText) match {
       case Some(t) => Right(t)
       case None => Left(ERROR_UNDEFINED_TYPE_VARIABLE(ctx.name.getText, ctx))
+    }
+  }
+
+  override def visitTypeForAll(ctx: TypeForAllContext): Either[Error, Type] = {
+    val vars = ctx.types.iterator().asScala.map(it => GenericType(it.getText)).toSeq
+    for {
+      t <- ctx.type_.accept(TypeContextVisitor(typeVars ++ vars))
+    } yield {
+      ForAll(vars, t.asInstanceOf[Fun])
     }
   }
 

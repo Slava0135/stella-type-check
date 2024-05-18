@@ -25,16 +25,16 @@ final case class Bool() extends Type {
 }
 
 final case class Fun(param: Type, res: Type) extends Type {
-  override def toString: String = s"($param -> $res)"
+  override def toString: String = s"fn ($param) -> $res"
   override def replace(genericType: GenericType, withType: Type): Type = {
     Fun(param.replace(genericType, withType), res.replace(genericType, withType))
   }
 }
 
-final case class GenericFun(generics: Seq[GenericType], param: Type, res: Type) extends Type {
-  override def toString: String = s"${generics.map(it => s"forall ${it.name}.")}($param -> $res)"
+final case class ForAll(generics: Seq[GenericType], funT: Fun) extends Type {
+  override def toString: String = s"forall${generics.map(it => s" $it").mkString}. $funT"
   override def replace(genericType: GenericType, withType: Type): Type = {
-    GenericFun(generics, param.replace(genericType, withType), res.replace(genericType, withType))
+    ForAll(generics, funT.replace(genericType, withType).asInstanceOf[Fun])
   }
 }
 
