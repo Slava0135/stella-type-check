@@ -85,9 +85,11 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
           ForAll(generics, Fun(paramT, returnT))
         )
     }
-    EitherLift.liftEither(ctx.decl().iterator().asScala.map(_.accept(copy(vars ++ topLevelDecl, None))).toSeq) match {
-      case Left(err) => return Left(err)
-      case _ =>
+    ctx.decl().iterator().asScala.foreach { it =>
+      it.accept(copy(vars ++ topLevelDecl, None)) match {
+        case err@Left(_) => return err
+        case _ =>
+      }
     }
     if (!topLevelDecl.contains("main")) {
       return Left(ERROR_MISSING_MAIN())
@@ -485,10 +487,15 @@ private case class TypeCheckVisitor(vars: immutable.Map[String, Type], expectedT
 
   override def visitTypeAbstraction(ctx: TypeAbstractionContext): Either[Error, Type] = {
     val generics = ctx.generics.iterator().asScala.map(it => GenericType(it.getText)).toSeq
-    for {
-      funT <- copy(vars, expectedT.map(_.asInstanceOf[ForAll].funT), typeVars ++ generics) visit ctx.expr()
-    } yield {
-      ForAll(generics, funT.asInstanceOf[Fun])
+    expectedT match {
+      case Some(ForAll(_, funT)) =>
+        for {
+          _ <- copy(vars, Some(funT), typeVars ++ generics) visit ctx.expr()
+        } yield {
+          ForAll(generics, funT)
+        }
+      case Some(t) => Left(ERROR_UNEXPECTED_TYPE_FOR_EXPRESSION(ctx, ForAll(Seq.empty, Fun(Unknown(), Unknown())), t))
+      case None => ???
     }
   }
 
